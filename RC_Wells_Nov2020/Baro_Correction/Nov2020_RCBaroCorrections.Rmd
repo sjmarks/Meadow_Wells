@@ -1,0 +1,173 @@
+---
+title: "Nov2020_RCBaroCorrections"
+author: "Simon Marks"
+date: "12/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(lubridate)
+library(data.table)
+
+```
+
+```{r}
+
+barometric_datafile_correction <- function(logger.data, baro.data) {
+  
+  colnames(logger.data) <- c("Date", "total.pressure_psi", "temp.ref_F")
+  colnames(baro.data) <- c("Date", "baro.pressure_psi", "baro.temp_F")
+  
+    logger.dt <- logger.data %>%
+      filter(!is.na(Date),
+             !is.na(total.pressure_psi), !is.na(temp.ref_F)) %>%
+      data.table(key = 'Date')
+    
+    baro.dt <- data.table(filter(baro.data, !is.na(Date), 
+                                 !is.na(baro.pressure_psi), !is.na(baro.temp_F)),
+                          key = 'Date')
+    
+    logger.baro.dt <- baro.dt[logger.dt, roll = 'nearest']
+    
+    logger.baro.dt <- logger.baro.dt %>%
+      dplyr::mutate(water.pressure_psi = total.pressure_psi - baro.pressure_psi) %>%
+      dplyr::select(-baro.temp_F)
+    
+    level.conversion <- logger.baro.dt %>% 
+      # convert temperature of water logger at reference time to deg c for density computation
+      dplyr::mutate(temp.ref_C = (temp.ref_F - 32) * (5/9)) %>% 
+      # Compute density of water at reference time (lb/ft^3)
+      dplyr::mutate(h2o.density = ((999.83952 + (16.945176 * temp.ref_C) - (7.9870401 * 10^-3 * temp.ref_C^2) - (46.170461 * 10^-6 * temp.ref_C^3) + (105.56302 * 10^-9 * temp.ref_C^4) - (280.54253 * 10^-12 * temp.ref_C^5))/(1 + (16.879850 * 10^-3 * temp.ref_C))) * 0.0624279606) %>%
+      # compute water level above sensor in ft.
+      dplyr::mutate(water.level.above.sensor = round(((water.pressure_psi * 144) / h2o.density), digits = 3)) %>% 
+      dplyr::select(-h2o.density, -water.pressure_psi, -temp.ref_C)
+    
+    if(min(logger.dt$Date) < min(baro.dt$Date) || max(logger.dt$Date) > max(baro.dt$Date))
+    warning(sprintf('URGENT: Time range for logger data (%s - %s) is not contained within time range for baro data (%s - %s). Data will be incorrectly compensated.', format(min(logger.dt$Date), '%Y-%m-%d %H:%M'), format(max(logger.dt$Date), '%Y-%m-%d %H:%M'), format(min(baro.dt$Date), '%Y-%m-%d %H:%M'), format(max(baro.dt$Date), '%Y-%m-%d %H:%M')))
+  
+    return(level.conversion)
+  
+}
+
+```
+
+### ATM Data + Well Data to Correct
+
+```{r}
+
+## Atm correction file (most recently RC file)
+
+Nov_2020_ATM_RC <- read_csv("RC_Wells_Nov2020/Baro_Correction/RC_ATM_Nov2020.csv", skip = 2,
+                            col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+## RCW1 collected during 11/2020 trip
+# Last RCW1 data was corrected up to 2020-08-17 09:00:00
+
+Nov2020_RCW1_uncorrected <- read_csv("RC_Wells_Nov2020/Baro_Correction/RC1W_Nov2020_uncorrected.csv", skip = 2, 
+                                     col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-08-17 09:30:00", tz = "UTC") & Date <= as.POSIXct("2020-11-21 13:30", tz = "UTC"))
+
+
+#################################################################################################################
+
+#################################################################################################################
+
+## RCW6 collected 11/2020 trip
+# Last RCW6 data was corrected up to 2020-08-17 09:00:00
+
+Nov2020_RCW6_uncorrected <- read_csv("RC_Wells_Nov2020/Baro_Correction/RC6W_Nov2020_uncorrected.csv", skip = 2, 
+                       col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-08-17 09:30:00", tz = "UTC") & Date <= as.POSIXct("2020-11-21 13:30", tz = "UTC"))
+
+#################################################################################################################
+
+#################################################################################################################
+
+## RCW3 collected 11/2020 trip
+# Last RCW3 data was corrected up to 2020-08-17 09:00:00
+
+Nov2020_RCW3_uncorrected <- read_csv("RC_Wells_Nov2020/Baro_Correction/RC3W_Nov2020_uncorrected.csv", skip = 2, 
+                                      col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-08-17 09:30:00", tz = "UTC") & Date <= as.POSIXct("2020-11-21 13:30", tz = "UTC"))
+  
+#################################################################################################################
+
+#################################################################################################################
+
+## RCW2 collected 11/2020 trip- well was dry. . .
+# Last RCW2 data was corrected up to 2020-07-06 07:30:00, RCW2 was not collected during the August trip. Correction requires atm files collected in Aug. 2020 from the control and RC
+
+# ATM correction files
+Aug_2020_ATM_Control <- read_csv("RC_Wells_Aug2020/Baro_Correction/atm_control_Aug2020.csv", skip = 2, 
+                                 col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date >= as.POSIXct("2020-07-06 08:00:00", tz = "UTC") & Date <= as.POSIXct("2020-07-10 08:00:00", tz = "UTC"))
+
+Aug_2020_ATM_RC <- read_csv("RC_Wells_Aug2020/Baro_Correction/RC_ATM_Aug2020.csv", skip = 2,
+                            col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date <= as.POSIXct("2020-08-17 09:00:00", tz = "UTC"))
+
+Nov_2020_ATM_RCSM2_revised <- dplyr::bind_rows(Aug_2020_ATM_Control, Aug_2020_ATM_RC, Nov_2020_ATM_RC)
+
+# RCW2
+Nov2020_RCW2_uncorrected <- read_csv("RC_Wells_Nov2020/Baro_Correction/RCW2_Nov2020_uncorrected.csv", skip = 2, 
+                                      col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-07-06 07:30:00", tz = "UTC") & Date <= as.POSIXct("2020-11-21 13:30", tz = "UTC"))
+
+```
+
+### Corrections written to .csv
+
+```{r}
+
+## RCW1 Nov 2020
+
+RCW1_Nov2020_corrected <- barometric_datafile_correction(Nov2020_RCW1_uncorrected, Nov_2020_ATM_RC)
+
+RCW1_Nov2020_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>% 
+  dplyr::mutate(ID = "RCW1") %>% 
+  readr::write_csv(path = "RC_Wells_Nov2020/Baro_Correction/RCW1_Nov2020_corrected.csv")
+
+## RCW3 Nov 2020
+
+RCW3_Nov2020_corrected <- barometric_datafile_correction(Nov2020_RCW3_uncorrected, Nov_2020_ATM_RC)
+
+RCW3_Nov2020_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "RCW3") %>%
+  readr::write_csv(path = "RC_Wells_Nov2020/Baro_Correction/RCW3_Nov2020_corrected.csv")
+
+## RCW6 Nov 2020
+
+RCW6_Nov2020_corrected <- barometric_datafile_correction(Nov2020_RCW6_uncorrected, Nov_2020_ATM_RC)
+
+RCW6_Nov2020_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "RCW6") %>%
+  readr::write_csv(path = "RC_Wells_Nov2020/Baro_Correction/RCW6_Nov2020_corrected.csv")
+
+## RCW2 Nov 2020
+
+RCW2_Nov2020_corrected <- barometric_datafile_correction(Nov2020_RCW2_uncorrected, Nov_2020_ATM_RCSM2_revised)
+
+RCW2_Nov2020_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "RCW2") %>%
+  readr::write_csv(path = "RC_Wells_Nov2020/Baro_Correction/RCW2_Nov2020_corrected.csv")
+
+```

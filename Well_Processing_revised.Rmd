@@ -1,0 +1,448 @@
+---
+title: "Meadow Well Processing"
+author: "Simon Marks"
+date: "7/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###########################################################################
+Notes:
+
+* Need to finish `process_well_data` function so it updates already compiled file (i.e. performs the coalecse join)- added needs testing
+* Need to implement writing to csv file built into the `process_well_data` functions- added needs testing
+* Currently everything works well with creating the compiled file from scratch. . . only funky behavior is sometimes files that were corrected for barometric using HoboWare have inconsistent no. of columns which prompts a warning from `readr::read_csv`. As it is right now `clean_hobo_u20` expects 10 columns from this file type. Visit here for possible solution? - link[https://community.rstudio.com/t/skip-columns-and-specify-column-types-in-readr-without-warnings/25019/3]
+* All depths are reported to three decimal places
+
+###########################################################################
+
+#### Packages
+
+```{r}
+
+library(plyr)
+library(tidyverse)
+library(lubridate)
+library(data.table)
+
+```
+
+#### Helper
+
+```{r}
+
+coalesce_join <- function(x, y, 
+                          by = NULL, suffix = c(".x", ".y"), 
+                          join = dplyr::full_join, ...) {
+  
+    joined <- join(x, y, by = by, suffix = suffix, ...)
+    
+    # names of desired output
+    cols <- dplyr::union(names(x), names(y))
+    
+    to_coalesce <- names(joined)[!names(joined) %in% cols]
+    
+    suffix_used <- suffix[ifelse(endsWith(to_coalesce, suffix[1]), 1, 2)]
+    
+    # remove suffixes and deduplicate
+    to_coalesce <- unique(substr(
+        to_coalesce, 
+        1, 
+        nchar(to_coalesce) - nchar(suffix_used)
+    ))
+    
+    coalesced <- purrr::map_dfc(to_coalesce, ~dplyr::coalesce(
+        joined[[paste0(.x, suffix[1])]], 
+        joined[[paste0(.x, suffix[2])]]
+    ))
+    
+    names(coalesced) <- to_coalesce
+    
+    dplyr::bind_cols(joined, coalesced)[cols]
+}
+
+```
+
+#### Helper- cleans data from Dwyer pressure transducer files
+
+```{r}
+
+clean_dwyer <- function(path){
+  
+  column_names <- readr::read_lines(path, n_max = 1) %>% 
+    stringr::str_split(pattern = ",") %>% 
+    purrr::pluck(1) %>% 
+    stringr::str_trim()
+  
+  ID <- column_names[1]
+  
+  weird_first_line <- readr::read_csv(path, n_max = 1, skip = 1, col_names = column_names,
+                                col_types = cols(.default = col_double(), 
+                                                 `Serial Number` = col_character(), Time = col_datetime(format = ""))) %>% 
+    dplyr::select(-`Serial Number`)
+  
+  # read in fun. parses date to POSIXct 
+  data <- readr::read_csv(path, skip = 2, col_names = column_names[1:3], 
+                          col_types = cols(.default = col_double(), Time = col_datetime(format = ""))) 
+  
+  data <- dplyr::bind_rows(weird_first_line, data) %>% 
+    dplyr::rename(Date = Time, total.pressure_psi = `Current(PSI)`) %>% 
+    dplyr::select(Date, total.pressure_psi) %>% 
+    dplyr::mutate(ID = ID) %>% 
+    # replace erronous measurments with NA (i.e. when battery system failed)
+    ##### UNSURE IF I SHOULD MANAGE THIS DIFFERENTLY
+    dplyr::mutate(total.pressure_psi = dplyr::case_when(
+      total.pressure_psi < 0 ~ NA_real_,
+      TRUE ~ total.pressure_psi
+    )) %>% 
+    # compute depth above the sensor from psi measurement (assumes density of freshwater = 997.0474 kg/m^3)
+    #### UNSURE HOW THIS CONVERSION HAS BEEN DONE IN THE PAST
+    dplyr::mutate(water.level.above.sensor = round((total.pressure_psi/0.432), digits =3)) %>%
+    # Add well length and well riser info based on condition of ID- riser and lengths from Well dimensions .docx
+    dplyr::mutate(well_length_ft = dplyr::case_when(
+      ID == "RCW1" ~ 10,
+      ID == "RCW2" ~ 1.5/0.3048,
+      ID == "RCW3" ~ 10,
+      ID == "RCW6" ~ 10,
+      ID == "MM3W" ~ 10,
+      ID == "CM0W" ~ 10,
+      ID == "CM1W" ~ 66/12,
+      ID == "CM2W" ~ 75.5/12,
+      ID == "CM3W" ~ 75.5/12,
+      ID == "CM4W" ~ 10
+    )) %>%
+    # riser lengths were converted from cm to ft
+    dplyr::mutate(well_riser_ft = dplyr::case_when(
+      ID == "RCW1" ~ (15/2.54)/12,
+      ID == "RCW2" ~ (9/2.54)/12,
+      ID == "RCW3" ~ (42/2.54)/12,
+      ID == "RCW6" ~ (15/2.54)/12,
+      ID == "MM3W" ~ 8/12,
+      ID == "CM0W" ~ (34/2.54)/12,
+      ID == "CM1W" ~ 8.5/12,
+      ID == "CM2W" ~ 23.5/12,
+      ID == "CM3W" ~ 23/12,
+      ID == "CM4W" ~ (9.3/2.54)/12
+    )) %>% 
+    # check to make sure that negative depths are resolved to depth of 0
+    dplyr::mutate(water.level.above.sensor = dplyr::case_when(
+      water.level.above.sensor < 0 ~ 0,
+      TRUE ~ water.level.above.sensor
+    )) %>%
+    # compute depth to gw
+    dplyr::mutate(depth.gw_ft = round(((well_length_ft - well_riser_ft) - water.level.above.sensor), digits = 3)) %>% 
+    # drop unnecessary vars
+    dplyr::select(-well_length_ft, -well_riser_ft, -total.pressure_psi)
+  
+  return(data)
+}
+
+```
+
+#### Helper- cleans data from u20 HOBO
+
+```{r}
+
+clean_hobo_u20 <- function(path){
+  
+  ## files with barometric correction performed in HoboWare
+  if(stringr::str_detect(path, "hobocorrected")){
+    
+    # Deduce site ID- should be site name (implement logger S/N?)
+    ID <- readr::read_csv(path, n_max = 1, col_names = FALSE, col_types = cols(.default = col_character())) %>% 
+      dplyr::pull(var = X1) %>%
+      as.character() %>%
+      # extracts everything after a colon
+      stringr::str_extract(pattern = "[^:]*$") %>%
+      stringr::str_trim()
+    
+    # Avoid problem of not knowing the number of cols coming from Hobo Corrected file 
+    no_of_cols <- readr::read_csv(path, skip = 1, n_max = 1, col_types = cols(.default = col_guess())) %>% 
+      ncol()
+    
+    no_of_cols_drop_at_end <- no_of_cols - 6
+    
+    data <- readr::read_csv(path, skip = 2, col_types = paste0("_cdddd", stringi::stri_dup("_", no_of_cols_drop_at_end)), 
+                            col_names = c("Date", "total.pressure_psi", "temp.ref_F", "baro.pressure_psi", "water.level.above.sensor"))
+    
+    # parse date time
+    # Add well length and well riser info based on condition of ID- riser and lengths from Well dimensions .docx
+    data <- data %>%
+      dplyr::filter(!is.na(Date), !is.na(total.pressure_psi)) %>%
+      dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>%
+      dplyr::mutate(ID = ID) %>%
+      dplyr::mutate(well_length_ft = dplyr::case_when(
+        ID == "RCW1" ~ 10,
+        ID == "RCW2" ~ 1.5/0.3048,
+        ID == "RCW3" ~ 10,
+        ID == "RCW6" ~ 10,
+        ID == "MM2W" ~ 60.5/12,
+        ID == "MM3W" ~ 10,
+        ID == "MM4W" ~ 66/12,
+        ID == "MM5W" ~ 65/12,
+        ID == "MM6W" ~ 76/12,
+        ID == "MM7W" ~ 10,
+        ID == "CM0W" ~ 10,
+        ID == "CM1W" ~ 66/12,
+        ID == "CM2W" ~ 75.5/12,
+        ID == "CM3W" ~ 75.5/12,
+        ID == "CM4W" ~ 10
+      )) %>% 
+      # riser lengths were converted from cm to ft where necessary
+      dplyr::mutate(well_riser_ft = dplyr::case_when(
+        ID == "RCW1" ~ (15/2.54)/12,
+        ID == "RCW2" ~ (9/2.54)/12,
+        ID == "RCW3" ~ (42/2.54)/12,
+        ID == "RCW6" ~ (15/2.54)/12,
+        ID == "MM2W" ~ 14.5/12,
+        ID == "MM3W" ~ 8/12,
+        ID == "MM4W" ~ 4/12,
+        ID == "MM5W" ~ 3/12,
+        ID == "MM6W" ~ 20/12,
+        ID == "MM7W" ~ 6.5/12,
+        ID == "CM0W" ~ (34/2.54)/12,
+        ID == "CM1W" ~ 8.5/12,
+        ID == "CM2W" ~ 23.5/12,
+        ID == "CM3W" ~ 23/12,
+        ID == "CM4W" ~ (9.3/2.54)/12
+      )) %>%
+      # check to make sure that negative depths are resolved to depth of 0
+      dplyr::mutate(water.level.above.sensor = dplyr::case_when(
+        water.level.above.sensor < 0 ~ 0,
+        TRUE ~ water.level.above.sensor
+      )) %>%
+      # compute depth to gw
+      dplyr::mutate(depth.gw_ft = round(((well_length_ft - well_riser_ft) - water.level.above.sensor), digits = 3)) %>% 
+      dplyr::select(-temp.ref_F, -baro.pressure_psi, -well_length_ft, -well_riser_ft, -total.pressure_psi)
+    
+    return(data)
+
+  }
+  
+  ## files corrected using R script
+  if(stringr::str_detect(path, "corrected")){
+    
+    # parse date time
+    # add well length and well riser info based on condition of ID- riser and lengths from Well dimensions .docx
+    data <- readr::read_csv(path, col_types = "cddddc") %>% 
+      dplyr::mutate(Date = lubridate::ymd_hms(Date)) %>% 
+      dplyr::mutate(well_length_ft = dplyr::case_when(
+        ID == "RCW1" ~ 10,
+        ID == "RCW2" ~ 1.5/0.3048,
+        ID == "RCW3" ~ 10,
+        ID == "RCW6" ~ 10,
+        ID == "MM2W" ~ 60.5/12,
+        ID == "MM3W" ~ 10,
+        ID == "MM4W" ~ 66/12,
+        ID == "MM5W" ~ 65/12,
+        ID == "MM6W" ~ 76/12,
+        ID == "MM7W" ~ 10,
+        ID == "CM0W" ~ 10,
+        ID == "CM1W" ~ 66/12,
+        ID == "CM2W" ~ 75.5/12,
+        ID == "CM3W" ~ 75.5/12,
+        ID == "CM4W" ~ 10
+      )) %>% 
+      # riser lengths were converted from cm to ft when necessary
+      dplyr::mutate(well_riser_ft = dplyr::case_when(
+        ID == "RCW1" ~ (15/2.54)/12,
+        ID == "RCW2" ~ (9/2.54)/12,
+        ID == "RCW3" ~ (42/2.54)/12,
+        ID == "RCW6" ~ (15/2.54)/12,
+        ID == "MM2W" ~ 14.5/12,
+        ID == "MM3W" ~ 8/12,
+        ID == "MM4W" ~ 4/12,
+        ID == "MM5W" ~ 3/12,
+        ID == "MM6W" ~ 20/12,
+        ID == "MM7W" ~ 6.5/12,
+        ID == "CM0W" ~ (34/2.54)/12,
+        ID == "CM1W" ~ 8.5/12,
+        ID == "CM2W" ~ 23.5/12,
+        ID == "CM3W" ~ 23/12,
+        ID == "CM4W" ~ (9.3/2.54)/12
+      )) %>% 
+      # check to make sure that negative depths are resolved to depth of 0
+      dplyr::mutate(water.level.above.sensor = dplyr::case_when(
+        water.level.above.sensor < 0 ~ 0,
+        TRUE ~ water.level.above.sensor
+      )) %>% 
+      # compute depth to gw
+      dplyr::mutate(depth.gw_ft = round(((well_length_ft - well_riser_ft) - water.level.above.sensor), digits = 3)) %>% 
+      # drop unnecessary vars
+      dplyr::select(-temp.ref_F, -baro.pressure_psi, -well_length_ft, -well_riser_ft, -total.pressure_psi)
+    
+    return(data)
+      
+  }
+
+}
+
+```
+
+#### Helper
+
+```{r}
+
+clean_well_data <- function(path){
+  
+  path <- stringr::str_to_lower(path)
+  
+  if(stringr::str_detect(path, pattern = ".txt")){
+    
+    data <- clean_dwyer(path = path)
+    
+    return(data)
+    
+  }
+  
+  if(stringr::str_detect(path, ".csv")){
+    
+    data <- clean_hobo_u20(path = path)
+    
+    return(data)
+    
+  }
+  
+}
+
+```
+
+#### Main
+
+```{r}
+
+process_well_data <- function(path, site, prev_compile = NULL, written_file_name = NULL){
+  
+  ## Control sequence checks before proceeding with function eval
+  
+  site <- stringr::str_to_lower(site)
+  
+  # Generic name for the outputted file based on site if a file name is not provided
+  if(is.null(written_file_name)){
+    written_file_name <- paste0("WellCompilation_", site, ".csv")
+  }
+  
+  if(!stringr::str_detect(written_file_name, pattern = ".csv")){
+    stop("provided written file name must end with .csv")
+  }
+  
+  if(!site %in% c("marian", "rc", "control", "childs")){
+    stop("site must be inputted as one of Marian, RC, Control, or Childs in quotes (not case sensitive).")
+  }
+  
+  ## Create char. vector of file names w/ directory path prepended contained in provided path
+  
+  files <- list.files(path, full.names = TRUE)
+  
+  ## Creates list of clean/standardized data (data frames) for all those provided in the path using `clean_SM_data` function
+  
+  listed_wells <- purrr::map(files, clean_well_data)
+  
+  ## Compiles well data using only those files provided in the path
+  
+  # Keeps files grouped by instrument and orders data chronologically. Duplicate observations are removed.
+  compiled <- dplyr::bind_rows(listed_wells) %>% 
+    dplyr::distinct() %>%
+    dplyr::group_by(ID) %>% 
+    # `dplyr::arrange` would not function properly here
+    do(data.frame(with(data = .,.[order(Date),]))) %>% 
+    ungroup()
+  
+  # Extract colnames for the compiled data
+  compiled_colnames <- colnames(compiled) %>% 
+    stringr::str_remove(pattern = "Date|ID")
+  
+  compiled_colnames <- compiled_colnames[compiled_colnames != ""]
+  
+  # Wide pivot the data with `names_from` ID, `values_from` compiled_colnames (excluding date and ID)
+  compiled_pivoted <- compiled %>% 
+    tidyr::pivot_wider(names_from = ID, values_from = all_of(compiled_colnames), values_fn = list) %>%
+    tidyr::unnest(-Date, keep_empty = FALSE)
+  
+  if(is.null(prev_compile)){
+    
+    compiled_pivoted <- compiled_pivoted %>% 
+      do(data.frame(with(data = .,.[order(Date),]))) %>%
+      dplyr::distinct() %>%
+      purrr::discard(~all(is.na(.)))%>% 
+      dplyr::mutate(Date = as.character(Date))
+    
+    # Write out compiled file from provided files only 
+    readr::write_csv(compiled_pivoted, path = paste0(path, "/", written_file_name))
+    
+    ## When prev_compile file is provided, the files provided in the path are appended to the previously compiled file
+    # Performs coalescing join- user does not have to worry about feeding in data that has been previously compiled
+  } else {
+    
+    appended_compile <- prev_compile %>%
+      coalesce_join(compiled_pivoted, by = "Date") %>% 
+      do(data.frame(with(data = .,.[order(Date),]))) %>%
+      dplyr::distinct() %>% 
+      purrr::discard(~all(is.na(.))) %>% 
+      dplyr::mutate(Date = as.character(Date))
+
+    # Write out appended compile file
+    readr::write_csv(appended_compile, path = paste0(path, "/", written_file_name))
+  }
+  
+}
+
+```
+
+## RC Test Compile up to July 2020
+
+```{r}
+
+test_compile_RC <- process_well_data(path = "RC_Wells_July2020/raw", site = "RC")
+
+## We good
+test_compile_RC %>% 
+  dplyr::filter(duplicated(Date) | duplicated(Date, fromLast = TRUE)) %>% 
+  dplyr::arrange(Date)
+
+## written to csv 
+# test_compile_RC %>% 
+#   dplyr::mutate(Date = as.character(Date)) %>% 
+#   readr::write_csv(path = paste0("RC_Wells_July2020/raw", "/", "compiledwells_RC_July2020.csv"))
+
+```
+
+## Marian Test Compile up to July 2020
+
+```{r}
+
+test_compile_Marian <- process_well_data(path = "Marian_Wells_July2020/raw", site = "Marian")
+
+## We good
+test_compile_Marian %>% 
+  dplyr::filter(duplicated(Date) | duplicated(Date, fromLast = TRUE)) %>% 
+  dplyr::arrange(Date)
+
+## written to csv
+# test_compile_Marian %>% 
+#   dplyr::mutate(Date = as.character(Date)) %>% 
+#   readr::write_csv(path = paste0("Marian_Wells_July2020/raw", "/", "compiledwells_Marian_July2020.csv"))
+
+```
+
+## Control Test Compile up to July 2020
+
+```{r}
+
+test_compile_Control <- process_well_data(path = "Control_Wells_July2020/raw", site = "Control", written_file_name = "compiledwells_Control_July2020.csv")
+
+## We good
+test_compile_Control %>% 
+  dplyr::filter(duplicated(Date) | duplicated(Date, fromLast = TRUE)) %>% 
+  dplyr::arrange(Date)
+
+## written to csv
+# test_compile_Control %>% 
+#   dplyr::mutate(Date = as.character(Date)) %>% 
+#   readr::write_csv(path = paste0("Control_Wells_July2020/raw", "/", "compiledwells_Control_July2020.csv"))
+
+```
+

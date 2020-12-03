@@ -1,0 +1,53 @@
+---
+title: "Plumas_Wells_2019"
+author: "Simon Marks"
+date: "9/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(readxl)
+library(tidyverse)
+
+```
+
+## Data
+
+```{r}
+
+RCW4P_2019 <- readxl::read_xlsx("Plumas_Corp_Wells/Rock_Creek_WY_2019_Well_Data.xlsx", sheet = "RCW 1", range = "$A$4:$F$35043", 
+                                col_names = c("Date", "seconds", "pressure_psi", "temp_F", "water.level.above.sensor_RCW4P", "depth.gw_ft_RCW4P"),
+                                col_types = c("date", "numeric", "numeric", "numeric", "numeric", "numeric"), trim_ws = TRUE) %>% 
+  dplyr::mutate(Date = lubridate::floor_date(Date, unit = "minute")) %>% 
+  # subtract 2 minutes so time step aligns with that for RCW3P
+  dplyr::mutate(Date = Date - 60 * 2) %>% 
+  # Good data begins on 2019-2-8 02:17:00 for RCW4P
+  dplyr::filter(Date > as.POSIXct("2019-2-8 02:00:00", tz = "UTC")) %>% 
+  dplyr::select(Date, water.level.above.sensor_RCW4P, depth.gw_ft_RCW4P)
+
+
+RCW3P_2019 <- readxl::read_xlsx("Plumas_Corp_Wells/Rock_Creek_WY_2019_Well_Data.xlsx", sheet = "RCW 2", range = "$A$4:$F$35043", 
+                                col_names = c("Date", "seconds", "pressure_psi", "temp_F", "water.level.above.sensor_RCW3P", "depth.gw_ft_RCW3P"), trim_ws = TRUE) %>% 
+  dplyr::mutate(Date = lubridate::floor_date(Date, unit = "minute")) %>% 
+  dplyr::select(Date, water.level.above.sensor_RCW3P, depth.gw_ft_RCW3P)
+
+compiledwells_RC_PlumasCorp_Sept2019 <- dplyr::left_join(RCW3P_2019, RCW4P_2019, by = "Date")
+
+```
+
+## Write to csv
+
+```{r}
+
+compiledwells_RC_PlumasCorp_Sept2019 %>% 
+  dplyr::mutate(Date = as.character(Date)) %>% 
+  readr::write_csv("Plumas_Corp_Wells/compiledwells_RC_PlumasCorp_Sept2019.csv")
+
+
+```
+

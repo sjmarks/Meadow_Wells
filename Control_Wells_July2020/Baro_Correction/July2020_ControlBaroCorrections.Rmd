@@ -1,0 +1,174 @@
+---
+title: "July 2020 Control Meadow Baro Corrections"
+author: "Simon Marks"
+date: "7/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(tidyverse)
+library(lubridate)
+library(data.table)
+
+
+```
+
+### Correction Function
+
+```{r}
+
+barometric_datafile_correction <- function(logger.data, baro.data) {
+  
+  colnames(logger.data) <- c("Date", "total.pressure_psi", "temp.ref_F")
+  colnames(baro.data) <- c("Date", "baro.pressure_psi", "baro.temp_F")
+  
+    logger.dt <- logger.data %>%
+      filter(!is.na(Date),
+             !is.na(total.pressure_psi), !is.na(temp.ref_F)) %>%
+      data.table(key = 'Date')
+    
+    baro.dt <- data.table(filter(baro.data, !is.na(Date), 
+                                 !is.na(baro.pressure_psi), !is.na(baro.temp_F)),
+                          key = 'Date')
+    
+    logger.baro.dt <- baro.dt[logger.dt, roll = 'nearest']
+    
+    logger.baro.dt <- logger.baro.dt %>%
+      dplyr::mutate(water.pressure_psi = total.pressure_psi - baro.pressure_psi) %>%
+      dplyr::select(-baro.temp_F)
+    
+    level.conversion <- logger.baro.dt %>% 
+      # convert temperature of water logger at reference time to deg c for density computation
+      dplyr::mutate(temp.ref_C = (temp.ref_F - 32) * (5/9)) %>% 
+      # Compute density of water at reference time (lb/ft^3)
+      dplyr::mutate(h2o.density = ((999.83952 + (16.945176 * temp.ref_C) - (7.9870401 * 10^-3 * temp.ref_C^2) - (46.170461 * 10^-6 * temp.ref_C^3) + (105.56302 * 10^-9 * temp.ref_C^4) - (280.54253 * 10^-12 * temp.ref_C^5))/(1 + (16.879850 * 10^-3 * temp.ref_C))) * 0.0624279606) %>%
+      # compute water level above sensor in ft.
+      dplyr::mutate(water.level.above.sensor = round(((water.pressure_psi * 144) / h2o.density), digits = 3)) %>% 
+      dplyr::select(-h2o.density, -water.pressure_psi, -temp.ref_C)
+    
+    if(min(logger.dt$Date) < min(baro.dt$Date) || max(logger.dt$Date) > max(baro.dt$Date))
+    warning(sprintf('URGENT: Time range for logger data (%s - %s) is not contained within time range for baro data (%s - %s). Data will be incorrectly compensated.', format(min(logger.dt$Date), '%Y-%m-%d %H:%M'), format(max(logger.dt$Date), '%Y-%m-%d %H:%M'), format(min(baro.dt$Date), '%Y-%m-%d %H:%M'), format(max(baro.dt$Date), '%Y-%m-%d %H:%M')))
+  
+    return(level.conversion)
+  
+}
+
+```
+
+### Data to Correct
+
+```{r}
+
+## Atm correction file (most recently collected from control climate station)
+
+July_2020_ATM_Control <- readr::read_csv("Control_Wells_July2020/Baro_Correction/atm_control_July2020.csv", skip = 2, 
+                                         col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+## CM0W collected during Dec 2019 trip- 04/24/19 04:30:00 PM to  12/08/19 04:00:00 PM
+
+Dec2019_CM0W_uncorrected <- readr::read_csv("Control_Wells_July2020/Baro_Correction/CM0W_Dec2019_uncorrected.csv", skip = 2, 
+                                             col_types = "_cdd____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+#################################################################################################################
+
+## CM0W collected during July 2020 trip- 04/26/20 10:30:00 AM to 07/07/20 04:30:00 PM
+
+July2020_CM0W_uncorrected <- readr::read_csv("Control_Wells_July2020/Baro_Correction/CM0W_July2020_uncorrected.csv", skip = 2, 
+                                             col_types = "_cdd____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+#################################################################################################################
+
+## CM1W collected during July 2020 trip- corrects 12/08/19 04:30:00 PM to 07/07/20 03:30:00 PM
+
+July2020_CM1W_uncorrected <- readr::read_csv("Control_Wells_July2020/Baro_Correction/CM1W_July2020_uncorrected.csv", skip = 2, 
+                                             col_types = "_cdd____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+#################################################################################################################
+
+## CM3W collected during July 2020 trip- corrects 12/08/19 05:00:00 PM to 07/07/20 03:00:00 PM
+
+July2020_CM3W_uncorrected <- readr::read_csv("Control_Wells_July2020/Baro_Correction/CM3W_July2020_uncorrected.csv", skip = 2, 
+                                             col_types = "_cdd____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+#################################################################################################################
+
+## CM4W collected during July 2020 trip- corrects 04/26/20 11:30:00 AM to 07/07/20 04:30:00 PM
+
+July2020_CM4W_uncorrected <- readr::read_csv("Control_Wells_July2020/Baro_Correction/CM4W_July2020_uncorrected.csv", skip = 2, 
+                                             col_types = "_cdd____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+```
+
+### Corrections written to .csv
+
+```{r}
+
+## CM0W Dec 2019
+
+CM0W_Dec2019_corrected <- barometric_datafile_correction(Dec2019_CM0W_uncorrected, July_2020_ATM_Control) %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "CM0W") %>%
+  readr::write_csv(path = "Control_Wells_July2020/Baro_Correction/CM0W_Dec2019_corrected.csv")
+
+## CM0W April 2020- this data was corrected in HoboWare, but needs filtering to accomodate the date ranges not covered by the script correction
+
+CM0W_April2020_corrected <- readr::read_csv("Control_Wells_July2020/Baro_Correction/CMW0_Apr2020_HoboCorrected.csv", skip = 2, 
+                                            col_types = "_cdddd_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F", "baro.pressure_psi", "water.level.above.sensor")) %>% 
+  dplyr::filter(!is.na(Date), !is.na(total.pressure_psi)) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::slice(10945:17651) %>% 
+  dplyr::mutate(Date = as.character(Date)) %>% 
+  dplyr::mutate(ID = "CM0W") %>%
+  readr::write_csv(path = "Control_Wells_July2020/Baro_Correction/CM0W_Apr2020_corrected.csv")
+
+## CM0W July 2020
+
+CM0W_July2020_corrected <- barometric_datafile_correction(July2020_CM0W_uncorrected, July_2020_ATM_Control) %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "CM0W") %>%
+  readr::write_csv(path = "Control_Wells_July2020/Baro_Correction/CM0W_July2020_corrected.csv")
+
+## CM1W July 2020
+
+CM1W_July2020_corrected <- barometric_datafile_correction(July2020_CM1W_uncorrected, July_2020_ATM_Control)  %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "CM1W") %>%
+  readr::write_csv(path = "Control_Wells_July2020/Baro_Correction/CM1W_July2020_corrected.csv")
+
+## CM3W July 2020
+
+CM3W_July2020_corrected <- barometric_datafile_correction(July2020_CM3W_uncorrected, July_2020_ATM_Control) %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "CM3W") %>%
+  readr::write_csv(path = "Control_Wells_July2020/Baro_Correction/CM3W_July2020_corrected.csv")
+
+## CM 4W July 2020
+
+CM4W_July2020_corrected <- barometric_datafile_correction(July2020_CM4W_uncorrected, July_2020_ATM_Control) %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "CM4W") %>%
+  readr::write_csv(path = "Control_Wells_July2020/Baro_Correction/CM4W_July2020_corrected.csv")
+
+```
