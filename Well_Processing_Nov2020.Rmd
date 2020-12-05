@@ -139,9 +139,9 @@ clean_dwyer <- function(path){
 clean_hobo_u20 <- function(path){
   
   ## files with barometric correction performed in HoboWare
-  if(stringr::str_detect(path, "hobocorrected")){
+  if(stringr::str_detect(path, "_hobocorrected")){
     
-    # Deduce site ID- should be site name (implement logger S/N?)
+    # Deduce site ID from first line of file
     ID <- readr::read_csv(path, n_max = 1, col_names = FALSE, col_types = cols(.default = col_character())) %>% 
       dplyr::pull(var = X1) %>%
       as.character() %>%
@@ -159,7 +159,7 @@ clean_hobo_u20 <- function(path){
                             col_names = c("Date", "total.pressure_psi", "temp.ref_F", "baro.pressure_psi", "water.level.above.sensor"))
     
     # parse date time
-    # Add well length and well riser info based on condition of ID- riser and lengths from Well dimensions .docx
+    # Add well length and well riser info based on condition of ID- riser and lengths from README
     data <- data %>%
       dplyr::filter(!is.na(Date), !is.na(total.pressure_psi)) %>%
       dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>%
@@ -213,10 +213,10 @@ clean_hobo_u20 <- function(path){
   }
   
   ## files corrected using R script
-  if(stringr::str_detect(path, "corrected")){
+  if(stringr::str_detect(path, "_corrected")){
     
     # parse date time
-    # add well length and well riser info based on condition of ID- riser and lengths from Well dimensions .docx
+    # add well length and well riser info based on condition of ID- riser and lengths from README
     data <- readr::read_csv(path, col_types = "cddddc") %>% 
       dplyr::mutate(Date = lubridate::ymd_hms(Date)) %>% 
       dplyr::mutate(well_length_ft = dplyr::case_when(
@@ -326,6 +326,11 @@ process_well_data <- function(path, site, prev_compile = NULL, written_file_name
   ## Create char. vector of file names w/ directory path prepended contained in provided path
   
   files <- list.files(path, full.names = TRUE)
+  
+  # make sure that function doesn't proceed with improper file naming convention
+  if(!all(stringr::str_detect(files, "(?<![:alpha:])corrected|_hobo(?=corrected)"))){
+    stop("ensure raw files have '_corrected' or '_hobocorrected` in all file names as appropriate")
+  }
   
   ## Creates list of clean/standardized data (data frames) for all those provided in the path using `clean_SM_data` function
   
