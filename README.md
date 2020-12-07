@@ -19,23 +19,23 @@ All functions are contained in the file `Well_Processing_revised.Rmd`. This docu
 
 This info is reflected in the functions for calculating depth to groundwater, but is also included here for reference/completeness.
 
-| Site | Well Length | Riser   |
-|------|-------------|---------|
-| MM2W | 60.5 in     | 14.5 in |
-| MM3W | 10 ft       | 8 in    |
-| MM4W | 66 in       | 4 in    |
-| MM5W | 65 in       | 3 in    |
-| MM6W | 76 in       | 20 in   |
-| MM7W | 10 ft       | 6.5 in  |
-| CM0W | 10 ft       | 34 cm   |
-| CM1W | 66 in       | 8.5 in  |
-| CM2W | 75.5 in     | 23.5 in |
-| CM3W | 75.5 in     | 23 in   |
-| CM4W | 10 ft       | 9.3 cm  |
-| RCW1 | 10 ft       | 15 cm   |
-| RCW2 | 1.5 m       | 9 cm    |
-| RCW3 | 10 ft       | 42 cm   |
-| RCW6 | 10 ft       | 15 cm   |
+| Site ID | Well Length | Riser   |
+|---------|-------------|---------|
+| MM2W    | 60.5 in     | 14.5 in |
+| MM3W    | 10 ft       | 8 in    |
+| MM4W    | 66 in       | 4 in    |
+| MM5W    | 65 in       | 3 in    |
+| MM6W    | 76 in       | 20 in   |
+| MM7W    | 10 ft       | 6.5 in  |
+| CM0W    | 10 ft       | 34 cm   |
+| CM1W    | 66 in       | 8.5 in  |
+| CM2W    | 75.5 in     | 23.5 in |
+| CM3W    | 75.5 in     | 23 in   |
+| CM4W    | 10 ft       | 9.3 cm  |
+| RCW1    | 10 ft       | 15 cm   |
+| RCW2    | 1.5 m       | 9 cm    |
+| RCW3    | 10 ft       | 42 cm   |
+| RCW6    | 10 ft       | 15 cm   |
 
 #### **Barometric correction logs:**
 
@@ -98,3 +98,23 @@ This info is reflected in the functions for calculating depth to groundwater, bu
 | ChildsT2 July 2020 | 9/5/2019 13:00 | 7/6/2020 10:00   | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | ChildsT2 Nov 2020  | 7/7/2020 13:30 | 11/23/2020 10:00 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | ChildsT3 Nov 2020  | 7/7/2020 13:30 | 11/23/2020 10:00 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
+
+#### **Weekly compilation log:**
+
+##### **RCM**
+
+| Start Week Of | End Week Of   | Weekday start      |
+|---------------|---------------|--------------------|
+| 6/1/2019      | 11/14/2020    | Saturday (7)       |
+
+##### **Marian**
+
+| Start Week Of  | End Week Of   | Weekday start      |
+|----------------|---------------|--------------------|
+| 4/26/2019      | 11/13/2020    | Friday (6)         |
+
+##### **Control**
+
+| Start Week Of  | End Week Of   | Weekday start      |
+|----------------|---------------|--------------------|
+| 4/26/2019      | 11/13/2020    | Friday (6)         |
