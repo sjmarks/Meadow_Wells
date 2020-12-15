@@ -1,7 +1,7 @@
 ---
 title: "RC_wells_dataexplore"
 author: "Simon Marks"
-date: "10/15/2020"
+date: "12/15/2020"
 output: html_document
 ---
 
@@ -14,28 +14,52 @@ library(tidyverse)
 library(openair)
 ```
 
-## Compiled Data
+## Most Recent Compiled Data
+
+#### Nov 2020 for CP wells, Sept 2019 for Plumas Corp
 
 ```{r}
 
-RC_wells_Aug2020 <- readr::read_csv("RC_Wells_Aug2020/raw/compiledwells_RC_Aug2020.csv", col_types = cols(Date = col_character(), .default = col_double())) %>% 
+RC_wells_Nov2020 <- readr::read_csv("RC_Wells_Nov2020/raw/compiledwells_RC_Nov2020.csv", col_types = cols(Date = col_character(), .default = col_double())) %>% 
   dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
 
 plumas_corp_wells <- readr::read_csv("Plumas_Corp_Wells/compiledwells_RC_PlumasCorp_Sept2019.csv", col_types = cols(Date = col_character(), .default = col_double())) %>% 
   dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
 
+# filter out bad data, same technique for what was compiled into weekly averages
+
+RC_wells_good_data_Nov2020 <- RC_wells_Nov2020 %>%
+  dplyr::mutate(dplyr::across(starts_with("depth"), ~ case_when(
+    . < 0 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  dplyr::mutate(dplyr::across(starts_with("water"), ~ case_when(
+    . <= 0.03 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  # update depth to gw, resolving to well length when water level above sensor is 0
+  dplyr::mutate(depth.gw_ft_RCW1 = case_when(
+    water.level.above.sensor_RCW1 == 0 ~ 9.508,
+    TRUE ~ depth.gw_ft_RCW1
+  ), depth.gw_ft_RCW2 = case_when(
+    water.level.above.sensor_RCW2 == 0 ~ 4.626,
+    TRUE ~ depth.gw_ft_RCW2
+  ), depth.gw_ft_RCW3 = case_when(
+    water.level.above.sensor_RCW3 == 0 ~ 8.622,
+    TRUE ~ depth.gw_ft_RCW3
+  ), depth.gw_ft_RCW6 = case_when(
+    water.level.above.sensor_RCW6 == 0 ~ 9.508,
+    TRUE ~ depth.gw_ft_RCW6
+  ))
+
 ```
 
-## Plots
+### Data for Plotting
 
 ```{r}
-RC_wells_Aug2020_plots <- RC_wells_Aug2020 %>% 
+RC_wells_Nov2020_plots <- RC_wells_good_data_Nov2020 %>% 
   select(-starts_with("water")) %>% 
   tidyr::pivot_longer(cols = starts_with("depth"), names_to = "well_id", values_to = "depth_gw") %>% 
-  dplyr::mutate(depth_gw = case_when(
-    depth_gw < 0 ~ 0,
-    TRUE ~ depth_gw
-  )) %>% 
   dplyr::mutate(well_id = stringr::str_remove(well_id, "depth.gw_ft_")) %>% 
   dplyr::mutate(well_id = as.factor(well_id))
 
@@ -50,87 +74,137 @@ plumas_wells_plots <- plumas_corp_wells %>%
   dplyr::mutate(well_id = as.factor(well_id))
 ```
 
+### RCW6
+
+Notes:
+
+* Data present 2019-05-30 15:00:00 to 2020-11-21 13:30:00
+* Need to remove data on July 9- this was day slug test was done (anomaly in plot)
+
+
 ```{r}
 
-## RCW6
-
-# Data present 2019-05-30 15:00:00 to 2020-8-17
-# Need to remove data on July 9- this was day slug test was done
-
-RC_wells_Aug2020_plots %>% 
+RCW6_timeseries <- RC_wells_Nov2020_plots %>% 
   dplyr::filter(well_id == "RCW6") %>%
+  # uncomment below line to customize date range plotted
   # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
   ggplot(aes(x = Date, y = depth_gw)) +
   geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "2 month")
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
 
-## RCW3
+RCW6_timeseries
 
-# Data present 2019-05-30 13:30:00 to 2019-12-16 02:30:00 (battery died powering system)
-# 2020-04-25 10:30:00 to 2020-8-17
 
-RC_wells_Aug2020_plots %>% 
+```
+
+### RCW3
+
+Notes:
+
+* Data present 2019-05-30 13:30:00 to 2019-12-16 02:30:00 (battery died powering system on Dwyer setup)
+* Data present 2020-04-25 10:30:00 to 2020-11-21 13:30:00
+
+```{r}
+
+RCW3_timeseries <- RC_wells_Nov2020_plots %>% 
   dplyr::filter(well_id == "RCW3") %>%
-  dplyr::filter(Date > as.POSIXct("2019-7-15 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-7-30 00:00:00", tz = "UTC")) %>% 
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-7-15 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-7-30 00:00:00", tz = "UTC")) %>% 
   ggplot(aes(x = Date, y = depth_gw)) +
   geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "4 day")
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
 
-## RCW2
+RCW3_timeseries
 
-# Data present 2019-09-03 11:00:00 to 2020-8-17
-# water table only present between mid-April and early May
-# week of 2020-04-13 to 2020-04-20 is when the water table is closest to surface
+```
+### RCW2
 
-RC_wells_Aug2020_plots %>% 
+Notes:
+
+* Data present 2019-09-03 11:00:00 to 2020-11-21 13:30:00
+* water table only present between mid-April and early May in 2020, well is likely dry rest of time
+* week of 2020-04-13 to 2020-04-20 is when the water table is closest to surface
+
+```{r}
+
+RCW2_timeseries <- RC_wells_Nov2020_plots %>% 
   dplyr::filter(well_id == "RCW2") %>%
-  dplyr::filter(Date > as.POSIXct("2020-4-13 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-4-16 00:00:00", tz = "UTC")) %>% 
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2020-4-13 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-4-16 00:00:00", tz = "UTC")) %>% 
   ggplot(aes(x = Date, y = depth_gw)) +
   geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "1 day")
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
 
-## RCW1
+RCW2_timeseries
 
-# Data present 2019-05-31 07:30:00 to 2019-10-21 17:30:00 (problems with instrument)
-# Data present
+```
 
-RC_wells_Aug2020_plots %>% 
+### RCW1
+
+Notes:
+
+* Data present 2019-05-31 07:30:00 to 2019-07-01 23:00:00 (problems with originally installed Dwyer instrument)
+* Data present 2019-07-09 17:00:00 to 2019-10-21 17:30:00 (problems with originally installed Dwyer instrument)
+* Data present 2019-12-09 12:00:00 to 2020-11-21 13:30:00 
+
+```{r}
+
+RCW1_timeseries <- RC_wells_Nov2020_plots %>% 
   dplyr::filter(well_id == "RCW1") %>%
+  # uncomment below line to customize date range plotted
   # dplyr::filter(Date > as.POSIXct("2019-6-15 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-6-20 00:00:00", tz = "UTC")) %>% 
   ggplot(aes(x = Date, y = depth_gw)) +
   geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "2 month")
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
 
-## RCW3P and RCW4P
-
-# good looking diurnal pattern from groundwater data at Plumas wells, probably because of instrument quality
-
-plumas_wells_plots %>% 
-  dplyr::filter(well_id == "RCW3P") %>%
-  dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
-  ggplot(aes(x = Date, y = depth_gw)) +
-  geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "1 day")
-
-plumas_wells_plots %>% 
-  dplyr::filter(well_id == "RCW4P") %>%
-  dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
-  ggplot(aes(x = Date, y = depth_gw)) +
-  geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "1 day")
+RCW1_timeseries
 
 ```
 
+## RCW3P
+
+Notes:
+
+* Data present 2018-10-01 00:00:00 to 2019-09-30 23:45:00 (15 minute interval data)
+* good looking diurnal pattern from groundwater data at Plumas wells, probably because of instrument quality
 
 ```{r}
-RC_wells_Aug2020_plots %>% 
-  dplyr::filter(well_id == "RCW2") %>%
-  dplyr::filter(Date > as.POSIXct("2020-4-17 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-4-20 00:00:00", tz = "UTC")) %>% 
-  dplyr::rename(date = Date) %>% 
-  dplyr::select(-well_id) %>% 
-  # openair::timeAverage(avg.time = "2 hour") %>% 
-  ggplot(aes(x = date, y = depth_gw)) +
+
+RCW3P_timeseries <- plumas_wells_plots %>% 
+  dplyr::filter(well_id == "RCW3P") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
   geom_line() +
-  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "1 day")
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+RCW3P_timeseries
+
 ```
 
+## RCW4P
+
+Notes:
+
+* Data present 2019-02-08 02:15:00 to 2019-09-30 23:45:00 (15 minute interval data)
+* good looking diurnal pattern from groundwater data at Plumas wells, probably because of instrument quality
+
+```{r}
+
+RCW4P_timeseries <- plumas_wells_plots %>% 
+  dplyr::filter(well_id == "RCW4P") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+RCW4P_timeseries
+
+```
