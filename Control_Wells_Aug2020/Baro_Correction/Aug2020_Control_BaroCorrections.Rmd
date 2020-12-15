@@ -100,9 +100,9 @@ Aug2020_CMW0_uncorrected <- read_csv("Control_Wells_Aug2020/Baro_Correction/CM0W
 
 #################################################################################################################
 
-## CM1W collected 08/2020 trip
+## CM4W collected 08/2020 trip
 
-Aug2020_CM1W_uncorrected <- read_csv("Control_Wells_Aug2020/Baro_Correction/CM1W_Aug2020_uncorrected.csv", skip = 2, 
+Aug2020_CM4W_uncorrected <- read_csv("Control_Wells_Aug2020/Baro_Correction/CM4W_Aug2020_uncorrected.csv", skip = 2, 
                                      col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
   dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
   dplyr::filter(Date > as.POSIXct("2020-07-07 15:30:00", tz = "UTC") & Date <= as.POSIXct("2020-08-17 09:00:00", tz = "UTC"))
@@ -115,7 +115,7 @@ Aug2020_CM1W_uncorrected <- read_csv("Control_Wells_Aug2020/Baro_Correction/CM1W
 
 ```{r}
 
-## CM0W Aug 2020
+## CM0W Aug 2020 (bottom deep well)
 
 CM0W_Aug2020_corrected <- barometric_datafile_correction(Aug2020_CMW0_uncorrected, Aug_2020_ATM_Control_revised)
 
@@ -124,14 +124,14 @@ CM0W_Aug2020_corrected %>%
   dplyr::mutate(ID = "CM0W") %>%
   readr::write_csv(path = "Control_Wells_Aug2020/Baro_Correction/CM0W_Aug2020_corrected.csv")
 
-## CM1W Aug 2020
+## CM4W Aug 2020 (top deep well)
 
-CM1W_July2020_corrected <- barometric_datafile_correction(Aug2020_CM1W_uncorrected, Aug_2020_ATM_Control_revised)
+CM4W_July2020_corrected <- barometric_datafile_correction(Aug2020_CM4W_uncorrected, Aug_2020_ATM_Control_revised)
 
-CM1W_July2020_corrected %>% 
+CM4W_July2020_corrected %>% 
   dplyr::mutate(Date = as.character(Date)) %>%
-  dplyr::mutate(ID = "CM1W") %>%
-  readr::write_csv(path = "Control_Wells_Aug2020/Baro_Correction/CM1W_Aug2020_corrected.csv")
+  dplyr::mutate(ID = "CM4W") %>%
+  readr::write_csv(path = "Control_Wells_Aug2020/Baro_Correction/CM4W_Aug2020_corrected.csv")
 
 ```
 
