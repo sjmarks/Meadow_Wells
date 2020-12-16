@@ -128,13 +128,12 @@ temp_agg_meadow_dat <- function(data, start_day_of_week, interval = "30 min", av
 
 weekly_Control_Wells_toNov2020 <- temp_agg_meadow_dat(Control_Wells_good_data_Nov2020, interval = "30 min", start_day_of_week = 6) %>% 
   mutate(date = as.character(date)) %>%
-  rename(Date = date) %>%
+  dplyr::rename(Date = date) %>%
   dplyr::mutate(dplyr::across(starts_with("depth") | starts_with("water"), ~ round(., digits = 3)))
 
 # write out to CSV
 
 weekly_Control_Wells_toNov2020 %>% 
   readr::write_csv(path = "Control_Wells_Nov2020/weekly_Wells_Control_Nov2020.csv")
-
 
 ```
