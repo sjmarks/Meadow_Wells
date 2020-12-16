@@ -1,0 +1,173 @@
+---
+title: "Control_wells_dataexplore"
+author: "Simon Marks"
+date: "12/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(openair)
+```
+
+## Most Recent Compiled Data for Control- Nov 2020
+
+```{r}
+
+Control_wells_Nov2020 <- readr::read_csv("Control_Wells_Nov2020/raw/compiledwells_Control_Nov2020.csv", col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
+
+# filter out bad data, same technique for what was compiled into weekly averages
+
+Control_wells_good_data_Nov2020 <- Control_wells_Nov2020 %>%
+  dplyr::mutate(dplyr::across(starts_with("depth"), ~ case_when(
+    . < 0 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  dplyr::mutate(dplyr::across(starts_with("water"), ~ case_when(
+    . <= 0.03 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  # update depth to gw, resolving to well length when water level above sensor is 0
+  dplyr::mutate(depth.gw_ft_CM0W = case_when(
+    water.level.above.sensor_CM0W == 0 ~ 8.885,
+    TRUE ~ depth.gw_ft_CM0W
+  ), depth.gw_ft_CM1W = case_when(
+    water.level.above.sensor_CM1W == 0 ~ 4.792,
+    TRUE ~ depth.gw_ft_CM1W
+  ), depth.gw_ft_CM2W = case_when(
+    water.level.above.sensor_CM2W == 0 ~ 4.333,
+    TRUE ~ depth.gw_ft_CM2W
+  ), depth.gw_ft_CM3W = case_when(
+    water.level.above.sensor_CM3W == 0 ~ 4.375,
+    TRUE ~ depth.gw_ft_CM3W
+  ), depth.gw_ft_CM4W = case_when(
+    water.level.above.sensor_CM4W == 0 ~ 9.695,
+    TRUE ~ depth.gw_ft_CM4W))
+
+```
+
+### Data for Plotting
+
+```{r}
+
+Control_wells_Nov2020_plots <- Control_wells_good_data_Nov2020 %>% 
+  select(-starts_with("water")) %>% 
+  tidyr::pivot_longer(cols = starts_with("depth"), names_to = "well_id", values_to = "depth_gw") %>% 
+  dplyr::mutate(well_id = stringr::str_remove(well_id, "depth.gw_ft_")) %>% 
+  dplyr::mutate(well_id = as.factor(well_id))
+
+```
+
+### CM0W
+
+Notes:
+
+* Data present 2019-04-24 16:30:00 to 2020-11-23 9:00:00
+
+```{r}
+
+CM0W_timeseries <- Control_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "CM0W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+CM0W_timeseries
+
+```
+
+### CM1W
+
+Notes:
+
+* Data present 2019-12-08 16:30:00 to 2020-11-23 09:00:00
+
+```{r}
+
+CM1W_timeseries <- Control_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "CM1W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2020-7-1 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-7-14 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+CM1W_timeseries
+
+```
+
+### CM2W
+
+Notes:
+
+* Data present 2019-12-08 18:00:00 to 2020-04-26 08:30:00
+* CMW2 download moved water level to CMW4 deep well during April 2020, put in new well during July 2020 trip
+* Data present 2020-07-07 18:30:00 to 2020-11-23 10:30:00
+
+```{r}
+
+CM2W_timeseries <- Control_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "CM2W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2020-7-1 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-7-14 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+CM2W_timeseries
+
+```
+
+### CM3W
+
+Notes:
+
+* Data present 2019-12-08 17:00:00 to 2020-11-23 10:30:00
+
+```{r}
+
+CM3W_timeseries <- Control_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "CM3W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2020-7-1 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-7-14 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+CM3W_timeseries
+
+```
+
+### CM4W
+
+Notes:
+
+* Dwyer set up was bad from Dec. 2019 to April 2020
+* April 2020 Hobo from CM2W was moved here
+* Data present 2020-04-26 11:30:00 to 2020-11-23 10:30:00
+
+```{r}
+
+CM4W_timeseries <- Control_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "CM4W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2020-7-1 00:00:00", tz = "UTC") & Date < as.POSIXct("2020-7-14 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+CM4W_timeseries
+
+```
