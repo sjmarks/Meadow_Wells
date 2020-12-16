@@ -104,12 +104,12 @@ Nov2020_CMW0_uncorrected <- read_csv("Control_Wells_Nov2020/Baro_Correction/CM0W
   dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
   dplyr::filter(Date > as.POSIXct("2020-08-17 09:00:00", tz = "UTC"))
 
-## CM1W collected 11/2020 trip, last data was corrected up to 2020-08-17 09:00:00
+## CM1W collected 11/2020 trip, llast data was corrected up to 2020-07-07 15:30:00
 
 Nov2020_CM1W_uncorrected <- read_csv("Control_Wells_Nov2020/Baro_Correction/CM1W_Nov2020_uncorrected.csv", skip = 2, 
                                      col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
   dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
-  dplyr::filter(Date > as.POSIXct("2020-08-17 09:00:00", tz = "UTC"))
+  dplyr::filter(Date > as.POSIXct("2020-07-07 15:30:00", tz = "UTC"))
 
 ## CM3W collected 11/2020 trip, last data was corrected up to 2020-07-07 15:00:00
 
@@ -118,12 +118,12 @@ Nov2020_CM3W_uncorrected <- read_csv("Control_Wells_Nov2020/Baro_Correction/CM3W
   dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
   dplyr::filter(Date > as.POSIXct("2020-07-07 15:00:00", tz = "UTC") & Date < as.POSIXct("2020-11-23 11:00:00", tz = "UTC"))
 
-## CM4W collected 11/2020 trip, last data was corrected up to 2020-07-07 16:30:00
+## CM4W collected 11/2020 trip, last data was corrected up to 2020-08-17 09:00:00
 
 Nov2020_CM4W_uncorrected <- read_csv("Control_Wells_Nov2020/Baro_Correction/CM4W_Nov2020_uncorrected.csv", skip = 2, 
                                      col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
   dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
-  dplyr::filter(Date > as.POSIXct("2020-07-07 16:30:00", tz = "UTC"))
+  dplyr::filter(Date > as.POSIXct("2020-08-17 09:00:00", tz = "UTC"))
 
 ## CM2W collected 11/2020 trip, well was installed July 2020, Nov 2020 was first download of this location
 
