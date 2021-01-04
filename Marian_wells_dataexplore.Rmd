@@ -1,0 +1,205 @@
+---
+title: "Marian_wells_dataexplore"
+author: "Simon Marks"
+date: "1/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(openair)
+```
+
+## Most Recent Compiled Data for Marian- Nov 2020
+
+```{r}
+
+Marian_wells_Nov2020 <- readr::read_csv("Marian_Wells_Nov2020/raw/compiledwells_Marian_Nov2020.csv", col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
+
+# filter out bad data, same technique for what was compiled into weekly averages
+
+Marian_wells_good_data_Nov2020 <- Marian_wells_Nov2020 %>%
+  dplyr::mutate(dplyr::across(starts_with("depth"), ~ case_when(
+    . < 0 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  dplyr::mutate(dplyr::across(starts_with("water"), ~ case_when(
+    . <= 0.03 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  # update depth to gw, resolving to well length when water level above sensor is 0
+  dplyr::mutate(depth.gw_ft_MM2W = case_when(
+    water.level.above.sensor_MM2W == 0 ~ 3.833,
+    TRUE ~ depth.gw_ft_MM2W
+  ), depth.gw_ft_MM3W = case_when(
+    water.level.above.sensor_MM3W == 0 ~ 9.333,
+    TRUE ~ depth.gw_ft_MM3W
+  ), depth.gw_ft_MM4W = case_when(
+    water.level.above.sensor_MM4W == 0 ~ 5.167,
+    TRUE ~ depth.gw_ft_MM4W
+  ), depth.gw_ft_MM5W = case_when(
+    water.level.above.sensor_MM5W == 0 ~ 5.167,
+    TRUE ~ depth.gw_ft_MM5W
+  ), depth.gw_ft_MM6W = case_when(
+    water.level.above.sensor_MM6W == 0 ~ 4.667,
+    TRUE ~ depth.gw_ft_MM6W
+  ), depth.gw_ft_MM7W = case_when(
+    water.level.above.sensor_MM7W == 0 ~ 9.458,
+    TRUE ~ depth.gw_ft_MM7W))
+
+```
+
+### Data for Plotting
+
+```{r}
+
+Marian_wells_Nov2020_plots <- Marian_wells_good_data_Nov2020 %>% 
+  select(-starts_with("water")) %>% 
+  tidyr::pivot_longer(cols = starts_with("depth"), names_to = "well_id", values_to = "depth_gw") %>% 
+  dplyr::mutate(well_id = stringr::str_remove(well_id, "depth.gw_ft_")) %>% 
+  dplyr::mutate(well_id = as.factor(well_id))
+
+```
+
+### MM2W
+
+Notes:
+
+* MM2W dry in Aug 2020 and Nov 2020, no download
+* Data present 2019-12-10 09:30:00 to 2020-07-07 08:30:00
+
+```{r}
+
+MM2W_timeseries <- Marian_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "MM2W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+MM2W_timeseries
+
+```
+
+### MM3W
+
+Notes:
+
+* Data present 2019-05-30 11:00:00 to 2020-01-11 13:00:00
+* MM3W had fouled logger discovered in April 2020
+* Data present 2020-04-25 16:00:00 to 2020-11-23 09:30:00
+
+
+```{r}
+
+MM3W_timeseries <- Marian_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "MM3W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+MM3W_timeseries
+
+```
+
+### MM4W
+
+Notes:
+
+* MM4W dry in Aug 2020 and Nov 2020, no download
+* Blip in early part of data, where depth to groundwater is said to be 0, seems erroneous and should probably be filtered out as `NA`
+* Data present 2020-04-25 08:30:00 to 2020-07-07 10:00:00
+
+
+```{r}
+
+MM4W_timeseries <- Marian_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "MM4W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+MM4W_timeseries
+
+```
+
+### MM5W
+
+Notes:
+
+* Data present 2020-04-25 15:00:00 to 2020-11-23 08:30:00
+
+
+```{r}
+
+MM5W_timeseries <- Marian_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "MM5W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+MM5W_timeseries
+
+```
+
+### MM6W
+
+Notes:
+
+* Installed in July 2020
+* Data present 2020-07-07 10:30:00 to 2020-11-23 09:30:00
+* Blips departing from the well depth below the surface in Aug and Nov are erroneous, well was dry
+
+
+```{r}
+
+MM6W_timeseries <- Marian_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "MM6W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+MM6W_timeseries
+
+```
+
+### MM7W
+
+Notes:
+
+* Data present 2019-04-25 11:00:00 to 2020-11-23 08:30:00
+
+
+```{r}
+
+MM7W_timeseries <- Marian_wells_Nov2020_plots %>% 
+  dplyr::filter(well_id == "MM7W") %>%
+  # uncomment below line to customize date range plotted
+  # dplyr::filter(Date > as.POSIXct("2019-9-25 00:00:00", tz = "UTC") & Date < as.POSIXct("2019-9-30 00:00:00", tz = "UTC")) %>% 
+  ggplot(aes(x = Date, y = depth_gw)) +
+  geom_line() +
+  # adjust `date_breaks` argument below to adjust x-axis labels
+  scale_x_datetime(date_labels = "%Y %b %d", date_breaks = "3 month")
+
+MM7W_timeseries
+
+```
