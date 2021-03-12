@@ -1,0 +1,145 @@
+---
+title: "Plumas_Wells_2020"
+author: "Simon Marks"
+date: "3/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(readxl)
+library(tidyverse)
+
+```
+
+```{r}
+
+coalesce_join <- function(x, y, 
+                          by = NULL, suffix = c(".x", ".y"), 
+                          join = dplyr::full_join, ...) {
+  
+    joined <- join(x, y, by = by, suffix = suffix, ...)
+    
+    # names of desired output
+    cols <- dplyr::union(names(x), names(y))
+    
+    to_coalesce <- names(joined)[!names(joined) %in% cols]
+    
+    suffix_used <- suffix[ifelse(endsWith(to_coalesce, suffix[1]), 1, 2)]
+    
+    # remove suffixes and deduplicate
+    to_coalesce <- unique(substr(
+        to_coalesce, 
+        1, 
+        nchar(to_coalesce) - nchar(suffix_used)
+    ))
+    
+    coalesced <- purrr::map_dfc(to_coalesce, ~dplyr::coalesce(
+        joined[[paste0(.x, suffix[1])]], 
+        joined[[paste0(.x, suffix[2])]]
+    ))
+    
+    names(coalesced) <- to_coalesce
+    
+    dplyr::bind_cols(joined, coalesced)[cols]
+}
+
+
+```
+
+## Data
+
+```{r}
+
+## read in data
+
+RCW4P_2020 <- readxl::read_xlsx("Plumas_Corp_Wells/Rock_Creek_WY_2020_Well_Data.xlsx", sheet = "RCW 1", range = "$A$4:$F$41575", 
+                                col_names = c("Date_annoying", "seconds", "pressure_psi", "temp_F", "water.level.above.sensor_RCW4P", "depth.gw_ft_RCW4P"),
+                                col_types = c("date", "numeric", "numeric", "numeric", "numeric", "numeric"), trim_ws = TRUE) 
+
+## extract first date in the data, convert to seconds in UTC
+start_date_RCW4P <- RCW4P_2020 %>% 
+  slice(1) %>% 
+  mutate(Date_annoying = as.character(Date_annoying)) %>% 
+  # read in date in proper timezone, this is "US/Pacific" because Plumas instruments are configured in Pacific Standard Time/Pacific Daylight Time
+  mutate(Date_annoying = lubridate::ymd_hms(Date_annoying, tz = "US/Pacific")) %>% 
+  mutate(seconds = as.numeric(lubridate::seconds(Date_annoying))) %>% 
+  pull(seconds)
+
+## create 15 min sequence starting from the start date in seconds for the length of the Date_annoying vector
+seconds_sequence_RCW4P <- seq(from = start_date_RCW4P, by = 900, length.out = length(RCW4P_2020$Date_annoying))
+
+## fix annoying date problem, by converting to GMT-7 (behind GMT by 7 hours, so Pacific DST. Many other instruments at RCM are configured using GMT-7)
+RCW4P_2020_good_dates <- RCW4P_2020 %>% 
+  mutate(seconds_UTC = seconds_sequence_RCW4P) %>% 
+  mutate(good_date = lubridate::as_datetime(seconds_sequence_RCW4P)) %>% 
+  mutate(local_standard_date = lubridate::as_datetime(good_date, tz = "Etc/GMT+7"), 
+         # force to UTC, (i.e. have R think that it is a standard time, to avoid problems)
+         local_standard_date = lubridate::force_tz(local_standard_date, tz = "UTC")) %>% 
+  # select(local_standard_date, pressure_psi, temp_F, water.level.above.sensor_RCW4P, depth.gw_ft_RCW4P) %>% 
+  rename(Date = local_standard_date) %>% 
+  # make time step 15 minutes, so the date aligns with that for RCW3P
+  dplyr::mutate(Date = lubridate::floor_date(Date, unit = "15 minutes")) %>% 
+  # Good data begins on 2019-2-8 GMT-7 03:17:00 for RCW4P
+  dplyr::filter(Date > as.POSIXct("2019-2-8 03:00:00", tz = "UTC")) %>% 
+  dplyr::select(Date, water.level.above.sensor_RCW4P, depth.gw_ft_RCW4P)
+
+RCW3P_2020 <- readxl::read_xlsx("Plumas_Corp_Wells/Rock_Creek_WY_2020_Well_Data.xlsx", sheet = "RCW 2", range = "$A$4:$F$35451", 
+                                col_names = c("Date_annoying", "seconds", "pressure_psi", "temp_F", "water.level.above.sensor_RCW3P", "depth.gw_ft_RCW3P"),
+                                col_types = c("date", "numeric", "numeric", "numeric", "numeric", "numeric"), trim_ws = TRUE) 
+
+## extract first date in the data, convert to seconds in UTC
+start_date_RCW3P <- RCW3P_2020 %>% 
+  slice(1) %>% 
+  mutate(Date_annoying = as.character(Date_annoying)) %>% 
+  # read in date in proper timezone, this is "US/Pacific" because Plumas instruments are configured in Pacific Standard Time/Pacific Daylight Time
+  mutate(Date_annoying = lubridate::ymd_hms(Date_annoying, tz = "US/Pacific")) %>% 
+  mutate(seconds = as.numeric(lubridate::seconds(Date_annoying))) %>% 
+  pull(seconds)
+
+## create 15 min sequence starting from the start date in seconds for the length of the Date_annoying vector
+seconds_sequence_RCW3P <- seq(from = start_date_RCW3P, by = 900, length.out = length(RCW3P_2020$Date_annoying))
+
+## fix annoying date problem, by converting to GMT-7 (behind GMT by 7 hours, so Pacific DST. Many other instruments at RCM are configured using GMT-7)
+RCW3P_2020_good_dates <- RCW3P_2020 %>% 
+  mutate(seconds_UTC = seconds_sequence_RCW3P) %>% 
+  mutate(good_date = lubridate::as_datetime(seconds_sequence_RCW3P)) %>% 
+  mutate(local_standard_date = lubridate::as_datetime(good_date, tz = "Etc/GMT+7"), 
+         # force to UTC, (i.e. have R think that it is a standard time, to avoid problems)
+         local_standard_date = lubridate::force_tz(local_standard_date, tz = "UTC")) %>% 
+  # select(local_standard_date, pressure_psi, temp_F, water.level.above.sensor_RCW3P, depth.gw_ft_RCW3P) %>% 
+  rename(Date = local_standard_date) %>% 
+  # make time step 15 minutes, so the date aligns with that for RCW3P
+  dplyr::mutate(Date = lubridate::floor_date(Date, unit = "15 minutes")) %>% 
+  dplyr::select(Date, water.level.above.sensor_RCW3P, depth.gw_ft_RCW3P)
+
+compiledwells_RC_PlumasCorp_Nov2020 <- dplyr::full_join(RCW4P_2020_good_dates, RCW3P_2020_good_dates, by = "Date")
+
+compiledwells_RC_PlumasCorp_Nov2020[duplicated(compiledwells_RC_PlumasCorp_Nov2020$Date)|duplicated(compiledwells_RC_PlumasCorp_Nov2020$Date, fromLast=TRUE),]
+
+```
+
+## last Plumas compilation, join with new comp
+
+```{r}
+
+compiledwells_RC_PlumasCorp_Sept2019 <- readr::read_csv("Plumas_Corp_Wells/compiledwells_RC_PlumasCorp_Sept2019.csv", col_types = list(col_character(), col_double(), col_double(), col_double(), col_double())) %>% 
+  mutate(Date = as.POSIXct(Date, tz = "UTC"))
+
+compiledwells_RC_PlumasCorp_Nov2020 <- coalesce_join(compiledwells_RC_PlumasCorp_Sept2019, compiledwells_RC_PlumasCorp_Nov2020, by = "Date")
+
+```
+## Write to csv
+
+```{r}
+
+compiledwells_RC_PlumasCorp_Nov2020 %>% 
+  dplyr::mutate(Date = as.character(Date)) %>% 
+  readr::write_csv("Plumas_Corp_Wells/compiledwells_RC_PlumasCorp_Nov2020.csv")
+
+```
+
