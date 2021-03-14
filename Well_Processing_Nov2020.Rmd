@@ -397,6 +397,8 @@ RC_compile_Aug2020 <- readr::read_csv(file = "RC_Wells_Aug2020/raw/compiledwells
   dplyr::mutate(Date = lubridate::ymd_hms(Date))
 ```
 
+Note: This compilation added in RCM well data that was pre-July 2019. Data is only available for RCW1 (spotty due to Dwyer battery fouling) and RCW6 (at the time was called RCW3, mid-RC well). Note also that this data collected early on was not always collected with 30-min timestamps. . . RCW6 was hourly early on and RCW1 was every 15 minutes.
+
 ```{r}
 RC_compile_Nov2020 <- process_well_data("RC_Wells_Nov2020/raw", site = "RC", prev_compile = RC_compile_Aug2020, written_file_name = "compiledwells_RC_Nov2020.csv")
 ```
