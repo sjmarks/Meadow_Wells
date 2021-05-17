@@ -1,0 +1,117 @@
+---
+title: "May2022_RCBaroCorrections"
+author: "Simon Marks"
+date: "05/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+source("well_processing_funs.R")
+
+```
+
+### ATM Data + Well Data to Correct
+
+```{r}
+
+## Atm correction file (most recently RC file- May 2021)
+
+May_2021_ATM_RC <- read_csv("RC_Wells_May2021/Baro_Correction/ATM_RC_May2021.csv", skip = 2,
+                            col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+## RCW1 collected during 05/2021 trip
+# Last RCW1 data was corrected up to 2020-11-17 13:30:00
+
+May2021_RCW1_uncorrected <- read_csv("RC_Wells_May2021/Baro_Correction/RC1W_May2021_uncorrected.csv", skip = 2, 
+                                     col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-11-21 13:30:00", tz = "UTC") & Date <= as.POSIXct("2021-05-01 11:00", tz = "UTC"))
+
+
+#################################################################################################################
+
+#################################################################################################################
+
+## RCW6 collected 05/2021 trip
+# Last RCW6 data was corrected up to 2020-11-21 13:30
+
+May2021_RCW6_uncorrected <- read_csv("RC_Wells_May2021/Baro_Correction/RC6W_May2021_uncorrected.csv", skip = 2, 
+                       col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-11-21 13:30", tz = "UTC") & Date <= as.POSIXct("2021-05-01 11:00", tz = "UTC"))
+
+#################################################################################################################
+
+#################################################################################################################
+
+## RCW3 collected 05/2021 trip
+# Last RCW3 data was corrected up to 2020-11-21 13:30
+
+May2021_RCW3_uncorrected <- read_csv("RC_Wells_May2021/Baro_Correction/RC3W_May2021_uncorrected.csv", skip = 2, 
+                       col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-11-21 13:30", tz = "UTC") & Date <= as.POSIXct("2021-05-01 11:00", tz = "UTC"))
+  
+#################################################################################################################
+
+#################################################################################################################
+
+## RCW2 collected 05/2021 trip- well was dry. . .
+# Last RCW2 data was corrected up to 2020-11-21 13:30:00
+
+May2021_RCW2_uncorrected <- read_csv("RC_Wells_May2021/Baro_Correction/RCW2_May2021_uncorrected.csv", skip = 2, 
+                                      col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-11-21 13:30", tz = "UTC") & Date <= as.POSIXct("2021-05-01 11:00", tz = "UTC"))
+
+```
+
+### Corrections written to .csv
+
+```{r}
+
+## RCW1 May 2021
+
+RCW1_May2021_corrected <- barometric_datafile_correction(May2021_RCW1_uncorrected, May_2021_ATM_RC)
+
+RCW1_May2021_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>% 
+  dplyr::mutate(ID = "RCW1") %>% 
+  readr::write_csv(path = "RC_Wells_May2021/Baro_Correction/RCW1_May2021_corrected.csv")
+
+## RCW3 May 2021
+
+RCW3_May2021_corrected <- barometric_datafile_correction(May2021_RCW3_uncorrected, May_2021_ATM_RC)
+
+RCW3_May2021_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "RCW3") %>%
+  readr::write_csv(path = "RC_Wells_May2021/Baro_Correction/RCW3_May2021_corrected.csv")
+
+# ## RCW6 Nov 2020
+# 
+# RCW6_Nov2020_corrected <- barometric_datafile_correction(Nov2020_RCW6_uncorrected, Nov_2020_ATM_RC)
+# 
+# RCW6_Nov2020_corrected %>% 
+#   dplyr::mutate(Date = as.character(Date)) %>%
+#   dplyr::mutate(ID = "RCW6") %>%
+#   readr::write_csv(path = "RC_Wells_Nov2020/Baro_Correction/RCW6_Nov2020_corrected.csv")
+
+## RCW2 May 2021
+
+RCW2_May2021_corrected <- barometric_datafile_correction(May2021_RCW2_uncorrected, May_2021_ATM_RC)
+
+RCW2_May2021_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "RCW2") %>%
+  readr::write_csv(path = "RC_Wells_May2021/Baro_Correction/RCW2_May2021_corrected.csv")
+
+```
