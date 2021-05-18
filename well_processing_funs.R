@@ -1,96 +1,76 @@
----
-title: "Meadow Well Processing"
-author: "Simon Marks"
-date: "7/22/2020"
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 #### Packages
-
-```{r}
 
 library(plyr)
 library(tidyverse)
 library(lubridate)
 library(data.table)
 
-```
 
 #### Barometric Correction Function
 
-**Description**
-
-Written based off this resource from Onset: link[https://www.onsetcomp.com/support/tech-note/barometric-compensation-method/] `barometric_datafile_correction` corrects HOBO U20 logger data for barometric. 
-
-**Arguments**
-
-* `logger.data` data to correct, as a data.frame. First three variables (columns) of data.frame should reflect **in order**; Date/timestamp, measured pressure in PSI, measured temperature in deg. F
-* `baro.data` barometric data used to correct, as a data.frame. First three variables (columns) of data.frame should reflect **in order**; Date/timestamp, measured barometric pressure in PSI, measured temperature in deg. F
-
-**Value**
-
-A data.frame
-
-```{r}
+# **Description**
+#   
+# Written based off this resource from Onset: link[https://www.onsetcomp.com/support/tech-note/barometric-compensation-method/] `barometric_datafile_correction` corrects HOBO U20 logger data for barometric. 
+# 
+# **Arguments**
+#   
+# * `logger.data` data to correct, as a data.frame. First three variables (columns) of data.frame should reflect **in order**; Date/timestamp, measured pressure in PSI, measured temperature in deg. F
+# * `baro.data` barometric data used to correct, as a data.frame. First three variables (columns) of data.frame should reflect **in order**; Date/timestamp, measured barometric pressure in PSI, measured temperature in deg. F
+# 
+# **Value**
+#   
+# A data.frame
 
 barometric_datafile_correction <- function(logger.data, baro.data) {
   
   colnames(logger.data) <- c("Date", "total.pressure_psi", "temp.ref_F")
   colnames(baro.data) <- c("Date", "baro.pressure_psi", "baro.temp_F")
   
-    logger.dt <- logger.data %>%
-      filter(!is.na(Date),
-             !is.na(total.pressure_psi), !is.na(temp.ref_F)) %>%
-      data.table(key = 'Date')
-    
-    baro.dt <- data.table(filter(baro.data, !is.na(Date), 
-                                 !is.na(baro.pressure_psi), !is.na(baro.temp_F)),
-                          key = 'Date')
-    
-    logger.baro.dt <- baro.dt[logger.dt, roll = 'nearest']
-    
-    logger.baro.dt <- logger.baro.dt %>%
-      dplyr::mutate(water.pressure_psi = total.pressure_psi - baro.pressure_psi) %>%
-      dplyr::select(-baro.temp_F)
-    
-    level.conversion <- logger.baro.dt %>% 
-      # convert temperature of water logger at reference time to deg c for density computation
-      dplyr::mutate(temp.ref_C = (temp.ref_F - 32) * (5/9)) %>% 
-      # Compute density of water at reference time (lb/ft^3)
-      dplyr::mutate(h2o.density = ((999.83952 + (16.945176 * temp.ref_C) - (7.9870401 * 10^-3 * temp.ref_C^2) - (46.170461 * 10^-6 * temp.ref_C^3) + (105.56302 * 10^-9 * temp.ref_C^4) - (280.54253 * 10^-12 * temp.ref_C^5))/(1 + (16.879850 * 10^-3 * temp.ref_C))) * 0.0624279606) %>%
-      # compute water level above sensor in ft.
-      dplyr::mutate(water.level.above.sensor = round(((water.pressure_psi * 144) / h2o.density), digits = 3)) %>% 
-      dplyr::select(-h2o.density, -water.pressure_psi, -temp.ref_C)
-    
-    if(min(logger.dt$Date) < min(baro.dt$Date) || max(logger.dt$Date) > max(baro.dt$Date))
+  logger.dt <- logger.data %>%
+    filter(!is.na(Date),
+           !is.na(total.pressure_psi), !is.na(temp.ref_F)) %>%
+    data.table(key = 'Date')
+  
+  baro.dt <- data.table(filter(baro.data, !is.na(Date), 
+                               !is.na(baro.pressure_psi), !is.na(baro.temp_F)),
+                        key = 'Date')
+  
+  logger.baro.dt <- baro.dt[logger.dt, roll = 'nearest']
+  
+  logger.baro.dt <- logger.baro.dt %>%
+    dplyr::mutate(water.pressure_psi = total.pressure_psi - baro.pressure_psi) %>%
+    dplyr::select(-baro.temp_F)
+  
+  level.conversion <- logger.baro.dt %>% 
+    # convert temperature of water logger at reference time to deg c for density computation
+    dplyr::mutate(temp.ref_C = (temp.ref_F - 32) * (5/9)) %>% 
+    # Compute density of water at reference time (lb/ft^3)
+    dplyr::mutate(h2o.density = ((999.83952 + (16.945176 * temp.ref_C) - (7.9870401 * 10^-3 * temp.ref_C^2) - (46.170461 * 10^-6 * temp.ref_C^3) + (105.56302 * 10^-9 * temp.ref_C^4) - (280.54253 * 10^-12 * temp.ref_C^5))/(1 + (16.879850 * 10^-3 * temp.ref_C))) * 0.0624279606) %>%
+    # compute water level above sensor in ft.
+    dplyr::mutate(water.level.above.sensor = round(((water.pressure_psi * 144) / h2o.density), digits = 3)) %>% 
+    dplyr::select(-h2o.density, -water.pressure_psi, -temp.ref_C)
+  
+  if(min(logger.dt$Date) < min(baro.dt$Date) || max(logger.dt$Date) > max(baro.dt$Date))
     warning(sprintf('URGENT: Time range for logger data (%s - %s) is not contained within time range for baro data (%s - %s). Data will be incorrectly compensated.', format(min(logger.dt$Date), '%Y-%m-%d %H:%M'), format(max(logger.dt$Date), '%Y-%m-%d %H:%M'), format(min(baro.dt$Date), '%Y-%m-%d %H:%M'), format(max(baro.dt$Date), '%Y-%m-%d %H:%M')))
   
-    return(level.conversion)
+  return(level.conversion)
   
 }
 
-```
-
 #### Read HOBO U20 atmospheric datafile
 
-**Description**
-
-`read_atm_hobo_u20` reads Hobo u20 produced atmospheric pressure `.csv` files into R. Returns a data.frame usable in `barometric_datafile_correction`'s `baro.data` argument. 
-
-**Arguments**
-
-* `path` path to raw `.csv` atmospheric datafile produced by HOBO U20
-
-**Value**
-
-A data.frame
-
-
-```{r}
+# **Description**
+#   
+# `read_atm_hobo_u20` reads Hobo u20 produced atmospheric pressure `.csv` files into R. 
+# Returns a data.frame usable in `barometric_datafile_correction`'s `baro.data` argument. 
+# 
+# **Arguments**
+# 
+# * `path` path to raw `.csv` atmospheric datafile produced by HOBO U20
+# 
+# **Value**
+# 
+# A data.frame
 
 read_atm_hobo_u20 <- function(path){
   
@@ -110,77 +90,67 @@ read_atm_hobo_u20 <- function(path){
   
 }
 
-
-```
-
-
 #### Helper function `coalesce_join`
 
-**Description**
-
-`coalesce_join` performs a majority of the data aggregation work within the `process_well_data`. The function combines two datasets containing identical non-key variables in varying states of completeness. This allows for the well data compilation to be updated/appended to without worry of overlap with the existing time series in the existing compilation.
-
-**Arguments:**
-
-* `x`, `y` tbls to join
-* `by` a character vector of variables to join by. If NULL, the default, *_join() defined by the `join` argument will do a natural join, using all variables with common names across the two tables. A message lists the variables so that you can check they're right (to suppress the message, simply explicitly list the variables that you want to join).
-* `suffix` If there are non-joined duplicate variables in x and y, these suffixes will be added to the output to disambiguate them. Should be a character vector of length 2
-* `join` type of mutating join supported by `dplyr`
-* ... other parameters passed onto methods, for instance, `na_matches` to control how NA values are matched. This is mostly included for robustness.
-
-**Value**
-
-A data frame `tbl_df`
-
-```{r}
+# **Description**
+#   
+# `coalesce_join` performs a majority of the data aggregation work within the `process_well_data`. The function combines two datasets containing identical non-key variables in varying states of completeness. This allows for the well data compilation to be updated/appended to without worry of overlap with the existing time series in the existing compilation.
+# 
+# **Arguments:**
+#   
+# * `x`, `y` tbls to join
+# * `by` a character vector of variables to join by. If NULL, the default, *_join() defined by the `join` argument will do a natural join, using all variables with common names across the two tables. A message lists the variables so that you can check they're right (to suppress the message, simply explicitly list the variables that you want to join).
+# * `suffix` If there are non-joined duplicate variables in x and y, these suffixes will be added to the output to disambiguate them. Should be a character vector of length 2
+# * `join` type of mutating join supported by `dplyr`
+# * ... other parameters passed onto methods, for instance, `na_matches` to control how NA values are matched. This is mostly included for robustness.
+# 
+# **Value**
+# 
+# A data frame `tbl_df`
 
 coalesce_join <- function(x, y, 
                           by = NULL, suffix = c(".x", ".y"), 
                           join = dplyr::full_join, ...) {
   
-    joined <- join(x, y, by = by, suffix = suffix, ...)
-    
-    # names of desired output
-    cols <- dplyr::union(names(x), names(y))
-    
-    to_coalesce <- names(joined)[!names(joined) %in% cols]
-    
-    suffix_used <- suffix[ifelse(endsWith(to_coalesce, suffix[1]), 1, 2)]
-    
-    # remove suffixes and deduplicate
-    to_coalesce <- unique(substr(
-        to_coalesce, 
-        1, 
-        nchar(to_coalesce) - nchar(suffix_used)
-    ))
-    
-    coalesced <- purrr::map_dfc(to_coalesce, ~dplyr::coalesce(
-        joined[[paste0(.x, suffix[1])]], 
-        joined[[paste0(.x, suffix[2])]]
-    ))
-    
-    names(coalesced) <- to_coalesce
-    
-    dplyr::bind_cols(joined, coalesced)[cols]
+  joined <- join(x, y, by = by, suffix = suffix, ...)
+  
+  # names of desired output
+  cols <- dplyr::union(names(x), names(y))
+  
+  to_coalesce <- names(joined)[!names(joined) %in% cols]
+  
+  suffix_used <- suffix[ifelse(endsWith(to_coalesce, suffix[1]), 1, 2)]
+  
+  # remove suffixes and deduplicate
+  to_coalesce <- unique(substr(
+    to_coalesce, 
+    1, 
+    nchar(to_coalesce) - nchar(suffix_used)
+  ))
+  
+  coalesced <- purrr::map_dfc(to_coalesce, ~dplyr::coalesce(
+    joined[[paste0(.x, suffix[1])]], 
+    joined[[paste0(.x, suffix[2])]]
+  ))
+  
+  names(coalesced) <- to_coalesce
+  
+  dplyr::bind_cols(joined, coalesced)[cols]
 }
-
-```
 
 #### Helper Function `clean_dwyer`
 
-**Description**
-
-`clean_dwyer` reads in Dwyer pressure transducer setup `.txt` files, calculates and Q/C `water.level.above.sensor` values, and calculates depth to groundwater. 
-
-**Arguments**
-
-* `path` path to raw `.txt` well data file
-
-**Value**
-
-A data.frame
-
-```{r}
+# **Description**
+#   
+# `clean_dwyer` reads in Dwyer pressure transducer setup `.txt` files, calculates and Q/C `water.level.above.sensor` values, and calculates depth to groundwater. 
+# 
+# **Arguments**
+#   
+# * `path` path to raw `.txt` well data file
+# 
+# **Value**
+#   
+# A data.frame
 
 clean_dwyer <- function(path){
   
@@ -192,8 +162,8 @@ clean_dwyer <- function(path){
   ID <- column_names[1]
   
   weird_first_line <- readr::read_csv(path, n_max = 1, skip = 1, col_names = column_names,
-                                col_types = cols(.default = col_double(), 
-                                                 `Serial Number` = col_character(), Time = col_datetime(format = ""))) %>% 
+                                      col_types = cols(.default = col_double(), 
+                                                       `Serial Number` = col_character(), Time = col_datetime(format = ""))) %>% 
     dplyr::select(-`Serial Number`)
   
   # read in fun. parses date to POSIXct 
@@ -252,23 +222,19 @@ clean_dwyer <- function(path){
   return(data)
 }
 
-```
-
 #### Helper Function `clean_hobo_u20`
 
-**Description**
-
-`clean_hobo_u20` reads in barometric corrected Hobo u20 produced `.csv` files, performs Q/C for erroneous `water.level.above.sensor` values, and calculates depth to groundwater. 
-
-**Arguments**
-
-* `path` path to raw `.csv` barometric corrected well data file
-
-**Value**
-
-A data.frame
-
-```{r}
+# **Description**
+#   
+#   `clean_hobo_u20` reads in barometric corrected Hobo u20 produced `.csv` files, performs Q/C for erroneous `water.level.above.sensor` values, and calculates depth to groundwater. 
+# 
+# **Arguments**
+#   
+#   * `path` path to raw `.csv` barometric corrected well data file
+# 
+# **Value**
+#   
+#   A data.frame
 
 clean_hobo_u20 <- function(path){
   
@@ -412,11 +378,7 @@ clean_hobo_u20 <- function(path){
   
 }
 
-```
-
 #### Helper
-
-```{r}
 
 clean_well_data <- function(path){
   
@@ -440,31 +402,33 @@ clean_well_data <- function(path){
   
 }
 
-```
-
 #### Main Function `process_well_data`
 
-**Description**
-
-`process_well_data` takes a folder containing raw .csv files from one meadow site and performs well data compilation, appending to an existing compilation for that meadow site if prompted. Outputs a written .csv file.
-
-**Arguments**
-
-* `path` path to folder containing raw .csv well data files. This provided path is where the compilation .csv will be written to.
-* `site` meadow site where the raw files were collected- one of "Marian", "RC", "Control", or "Childs" in quotes
-* `prev_compile` previous data compilation. By default this is set to `NULL` 
-* `written_file` name of produced compilation file, must be quoted and end with .csv
-
-**Value**
-
-A .csv file written to `path`
-
-**Other notes**
-
-Make sure that the first line of the HOBO U20 `.csv` file contains a **site ID** that is consistent with the column naming convention in the file that is being appended to. If the file is `.txt` from a Dwyer setup make sure site ID is the first item in the header (first) row of the file. See site naming convention in the table in the `README`. Suggestion is to edit the `.csv` or `.txt` file in NotePad. HOBO U 20 raw files need to have been corrected previously for barometric using `HOBOware Pro` software or the `barometric_datafile_correction` function found in this repo. **ENSURE that files follow the proper naming convention that allows the functions to discern between the two data correction methods when compiling. `HOBOware Pro` corrected files should have "_hobocorrected" in their file name, while files corrected with the function should have "_corrected in their name.**
-
-```{r}
-
+# **Description**
+#   
+#   `process_well_data` takes a folder containing raw .csv files from one meadow site and performs well data compilation, appending to an existing compilation for that meadow site if prompted. Outputs a written .csv file.
+# 
+# **Arguments**
+#   
+# * `path` path to folder containing raw .csv well data files. This provided path is where the compilation .csv will be written to.
+# * `site` meadow site where the raw files were collected- one of "Marian", "RC", "Control", or "Childs" in quotes
+# * `prev_compile` previous data compilation. By default this is set to `NULL` 
+# * `written_file` name of produced compilation file, must be quoted and end with .csv
+# 
+# **Value**
+#   
+#   A .csv file written to `path`
+# 
+# **Other notes**
+#   
+# Make sure that the first line of the HOBO U20 `.csv` file contains a **site ID** that is consistent with the column naming convention 
+# in the file that is being appended to. If the file is `.txt` from a Dwyer setup make sure site ID is the first item in the header (first) 
+# row of the file. See site naming convention in the table in the `README`. Suggestion is to edit the `.csv` or `.txt` file in NotePad. HOBO U 20 
+# raw files need to have been corrected previously for barometric using `HOBOware Pro` software or the `barometric_datafile_correction` function 
+# found in this repo. **ENSURE that files follow the proper naming convention that allows the functions to discern between the two data correction
+# methods when compiling. `HOBOware Pro` corrected files should have "_hobocorrected" in their file name, while files corrected with the function 
+# should have "_corrected in their name.**
+  
 process_well_data <- function(path, site, prev_compile = NULL, written_file_name = NULL){
   
   ## Control sequence checks before proceeding with function eval
@@ -539,39 +503,36 @@ process_well_data <- function(path, site, prev_compile = NULL, written_file_name
       dplyr::distinct() %>% 
       purrr::discard(~all(is.na(.))) %>% 
       dplyr::mutate(Date = as.character(Date))
-
+    
     # Write out appended compile file
     readr::write_csv(appended_compile, path = paste0(path, "/", written_file_name))
   }
   
 }
 
-```
-
 ## Temporal Aggregation Function
 
-**Description**
-
-`temp_agg_meadow_dat` takes a data.frame of a meadow data compilation (e.g. soil moisture, well, climate, sap flow data) and performs a temporal aggregation. 
-
-**Arguments**
-
-* `data` dataframe with data to aggregate, **must** contain a variable called "Date" of class `POSIXct` 
-* `start_day_of_week` an integer specifying the start day of the week for the temporal aggregation. 1 corresponds to Sunday and so on.
-* `interval` the function tries to determine the interval of the original time series (e.g. hourly) by calculating the most common interval between time steps. The interval is needed for calculations where the `data.thresh > 0` as is defaulted. For example, a time step of 30 minutes would be specified as `interval = "30 min"`
-* `avg.time` This defines the time period to average to. Can be “sec”, “min”, “hour”, “day”, “DSTday”, “week”, “month”, “quarter” or “year”. For much increased flexibility a number can precede these options followed by a space. For example, a 7 day aggregation would be `avg.time = "7 day"`. In addition, avg.time can equal “season”, in which case 3-month seasonal values are calculated with spring defined as March, April, May and so on.
-* `data.thresh` The data capture threshold to use (%). A value of zero means that all available data will be used in a particular period regardless if of the number of values available. Conversely, a value of 100 will mean that all data will need to be present for the average to be calculated, else it is recorded as NA. 
-* `statistic` The statistic to apply when aggregating the data; default is the mean. Can be one of “mean”, “max”, “min”, “median”, “sd”. "sd" is standard deviation.
-
-**Value**
-
-A data.frame with Date in class `POSIXct` and WY in class `numeric`. WY indicates the water year that the aggregation belongs to.
-
-**Other notes**
-
-Make sure there is a variable in the supplied data.frame called "Date"
-
-```{r}
+# **Description**
+#   
+# `temp_agg_meadow_dat` takes a data.frame of a meadow data compilation (e.g. soil moisture, well, climate, sap flow data) and 
+# performs a temporal aggregation. 
+# 
+# **Arguments**
+#   
+# * `data` dataframe with data to aggregate, **must** contain a variable called "Date" of class `POSIXct` 
+# * `start_day_of_week` an integer specifying the start day of the week for the temporal aggregation. 1 corresponds to Sunday and so on.
+# * `interval` the function tries to determine the interval of the original time series (e.g. hourly) by calculating the most common interval between time steps. The interval is needed for calculations where the `data.thresh > 0` as is defaulted. For example, a time step of 30 minutes would be specified as `interval = "30 min"`
+# * `avg.time` This defines the time period to average to. Can be “sec”, “min”, “hour”, “day”, “DSTday”, “week”, “month”, “quarter” or “year”. For much increased flexibility a number can precede these options followed by a space. For example, a 7 day aggregation would be `avg.time = "7 day"`. In addition, avg.time can equal “season”, in which case 3-month seasonal values are calculated with spring defined as March, April, May and so on.
+# * `data.thresh` The data capture threshold to use (%). A value of zero means that all available data will be used in a particular period regardless if of the number of values available. Conversely, a value of 100 will mean that all data will need to be present for the average to be calculated, else it is recorded as NA. 
+# * `statistic` The statistic to apply when aggregating the data; default is the mean. Can be one of “mean”, “max”, “min”, “median”, “sd”. "sd" is standard deviation.
+# 
+# **Value**
+#   
+# A data.frame with Date in class `POSIXct` and WY in class `numeric`. WY indicates the water year that the aggregation belongs to.
+# 
+# **Other notes**
+#   
+# Make sure there is a variable in the supplied data.frame called "Date"
 
 temp_agg_meadow_dat <- function(data, start_day_of_week, interval = "30 min", avg.time = "7 day", data.thresh = 50, statistic = "mean"){
   
@@ -621,5 +582,4 @@ temp_agg_meadow_dat <- function(data, start_day_of_week, interval = "30 min", av
   #   readr::write_csv(path = path_write_out)
   
 }
-
-```
+  

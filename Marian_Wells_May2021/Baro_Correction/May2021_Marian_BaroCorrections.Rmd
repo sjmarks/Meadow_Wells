@@ -1,0 +1,99 @@
+---
+title: "May2021_Marian_BaroCorrections"
+author: "Simon Marks"
+date: "5/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Functions for baro correction
+
+```{r}
+
+source("well_processing_funs.R")
+
+```
+
+### ATM Data + Well Data to Correct
+
+```{r}
+
+## Atm correction file (most recent control meadow file)- control meadow ATM stopped logging on 2020-07-19 04:30:00 due full memory. Therefore, Rock Creek ATM is needed to fill gap that the Control ATM was not logging.
+## Control ATM was relaunched on 2020-08-18 09:30:00
+
+# Aug 2020 control atmospheric
+Aug_2020_ATM_Marian <- read_csv("Marian_Wells_Aug2020/Baro_Correction/atm_control_Aug2020.csv", skip = 2, 
+                                 col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date >= as.POSIXct("2020-07-07 08:30:00", tz = "UTC"))
+
+# Aug 2020 RC atmospheric
+Aug_2020_ATM_RC <- read_csv("Marian_Wells_Aug2020/Baro_Correction/RC_ATM_Aug2020.csv", skip = 2,
+                            col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date > as.POSIXct("2020-07-19 04:30:00", tz = "UTC") & Date < as.POSIXct("2020-08-18 09:30:00", tz = "UTC"))
+
+# May 2021 control atmospheric
+May_2021_ATM_Marian <- read_csv("Marian_Wells_May2021/Baro_Correction/atm_control_May2021.csv", skip = 2, 
+                                 col_types = "_cdd____", col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>%
+  dplyr::mutate(Date = lubridate::mdy_hms(Date))
+
+#################################################################################################################
+
+## Combined RC Atm and Control Atm files
+
+May_2021_ATM_Marian_revised <- dplyr::bind_rows(Aug_2020_ATM_Marian, Aug_2020_ATM_RC, May_2021_ATM_Marian)
+
+#################################################################################################################
+
+## MM2W collected during 05/2021 trip, MM2W was last downloaded during July 2020 trip and was corrected up to 7/7/2020 8:30
+
+May_2021_MM2W_uncorrected <- read_csv("Marian_Wells_May2021/Baro_Correction/MM2W_May2021_uncorrected.csv", skip = 2, 
+                                     col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date >= as.POSIXct("2020-07-07 09:00:00", tz = "UTC"))
+
+
+#################################################################################################################
+
+## MMW4 collected during 05/2021 trip, MM4W was last downloaded during July 2020 trip and was corrected up to 7/7/2020 10:00
+
+May_2021_MM4W_uncorrected <- read_csv("Marian_Wells_May2021/Baro_Correction/MM4W_May2021_uncorrected.csv", skip = 2, 
+                                     col_types = "_???_____", col_names = c("Date", "total.pressure_psi", "temp.ref_F")) %>% 
+  dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+  dplyr::filter(Date >= as.POSIXct("2020-07-07 10:30:00", tz = "UTC"))
+
+
+#################################################################################################################
+
+## All other Marian wells can be corrected in HOBOware
+
+```
+
+### Perform correction and write out corrected files
+
+```{r}
+
+## MM2W May 2021 corrected (ENSURE ID variable corresponds with set-up)
+
+MM2W_May2021_corrected <- barometric_datafile_correction(May_2021_MM2W_uncorrected, May_2021_ATM_Marian_revised)
+
+MM2W_May2021_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "MM2W") %>%
+  readr::write_csv(path = "Marian_Wells_May2021/Baro_Correction/MM2W_May2021_corrected.csv")
+
+
+## MM4W May 2021 corrected (ENSURE ID variable corresponds with set-up)
+
+MM4W_May2021_corrected <- barometric_datafile_correction(May_2021_MM4W_uncorrected, May_2021_ATM_Marian_revised)
+
+MM4W_May2021_corrected %>% 
+  dplyr::mutate(Date = as.character(Date)) %>%
+  dplyr::mutate(ID = "MM4W") %>%
+  readr::write_csv(path = "Marian_Wells_May2021/Baro_Correction/MM4W_May2021_corrected.csv")
+
+```
