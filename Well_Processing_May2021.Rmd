@@ -1,0 +1,91 @@
+---
+title: "Well_Processing_May2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Functions for processing
+
+```{r}
+
+source("well_processing_funs.R")
+
+```
+ 
+## Update RC Compilation
+
+```{r}
+
+## Prev RC Compile (Nov 2020)
+
+RC_compile_Nov2020 <- readr::read_csv(file = "RC_Wells_Nov2020/raw/compiledwells_RC_Nov2020.csv", 
+                                       col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+```
+
+```{r}
+
+# update the November RC well compilation 
+
+RC_compile_May2021 <- process_well_data("RC_Wells_May2021/raw", site = "RC", prev_compile = RC_compile_Nov2020, written_file_name = "compiledwells_RC_May2021.csv")
+
+```
+
+## Update Control Compilation
+
+```{r}
+
+## Prev Control Compile (Nov 2020)
+
+Control_compile_Nov2020 <- readr::read_csv(file = "Control_Wells_Nov2020/raw/compiledwells_Control_Nov2020.csv", 
+                                       col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+```
+
+```{r}
+
+# update the November Control well compilation 
+## Note: CM0W last measurement is erroneous because the logger took a measurement out of well
+
+Control_compile_May2021 <- process_well_data("Control_Wells_May2021/raw", site = "control", prev_compile = Control_compile_Nov2020, written_file_name = "compiledwells_Control_May2021.csv")
+
+```
+
+## Update Marian Compilation
+
+```{r}
+
+## Prev Marian Compile (Nov 2020)
+
+Marian_compile_Nov2020 <- readr::read_csv(file = "Marian_Wells_Nov2020/raw/compiledwells_Marian_Nov2020.csv", 
+                                       col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+```
+
+```{r}
+
+Marian_compile_May2021 <- process_well_data("Marian_Wells_May2021/raw", site = "Marian", prev_compile = Marian_compile_Nov2020, written_file_name = "compiledwells_Marian_May2021.csv")
+
+```
+
+## Create Child's compilation
+
+Notes:
+
+* First creation of the Child's meadow compilation for wells "Childs_T2" and "Childs_T3"
+* Child's well data was corrected in 'Childs_Wells_Nov2021/Baro_Correction/Nov2020_Childs_BaroCorrection.Rmd`, but was never formally compiled b/c didn't have well depths.
+* Notice that because this was the first ever compile of Child's, we don't specify a file to append to. The nect compilation will append to the May 2021 compile done below.
+* New barometric corrections were performed with R, due to extensive interpolation performed in HOBOware. 
+
+```{r}
+
+Childs_compile_May2021 <- process_well_data("Childs_Wells_May2021/raw", site = "Childs", written_file_name = "compiledwells_Childs_May2021.csv")
+
+```
+
