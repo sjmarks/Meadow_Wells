@@ -75,6 +75,45 @@ barometric_datafile_correction <- function(logger.data, baro.data) {
 
 ```
 
+#### Read HOBO U20 atmospheric datafile
+
+**Description**
+
+`read_atm_hobo_u20` reads Hobo u20 produced atmospheric pressure `.csv` files into R. Returns a data.frame usable in `barometric_datafile_correction`'s `baro.data` argument. 
+
+**Arguments**
+
+* `path` path to raw `.csv` atmospheric datafile produced by HOBO U20
+
+**Value**
+
+A data.frame
+
+
+```{r}
+
+read_atm_hobo_u20 <- function(path){
+  
+  # Avoid problem of not knowing the number of cols coming from Hobo file (i.e. avoid warning)
+  no_of_cols <- readr::read_csv(path, skip = 1, n_max = 1, col_types = cols(.default = col_guess())) %>% 
+    ncol()
+  
+  no_of_cols_drop_at_end <- no_of_cols - 4
+  
+  data <- readr::read_csv(path, skip = 2, 
+                          col_types = paste0("_cdd", stringi::stri_dup("_", no_of_cols_drop_at_end)), 
+                          col_names = c("Date", "baro.pressure_psi", "baro.temp_F")) %>% 
+    dplyr::mutate(Date = lubridate::mdy_hms(Date)) %>% 
+    dplyr::filter(!is.na(baro.pressure_psi))
+  
+  return(data)
+  
+}
+
+
+```
+
+
 #### Helper function `coalesce_join`
 
 **Description**
@@ -274,7 +313,9 @@ clean_hobo_u20 <- function(path){
         ID == "CM1W" ~ 66/12,
         ID == "CM2W" ~ 75.5/12,
         ID == "CM3W" ~ 75.5/12,
-        ID == "CM4W" ~ 10
+        ID == "CM4W" ~ 10,
+        ID == "Childs_T2" ~ 3.937,
+        ID == "Childs_T3" ~ 3.609
       )) %>% 
       # riser lengths were converted from cm to ft where necessary
       dplyr::mutate(well_riser_ft = dplyr::case_when(
@@ -292,7 +333,9 @@ clean_hobo_u20 <- function(path){
         ID == "CM1W" ~ 8.5/12,
         ID == "CM2W" ~ 23.5/12,
         ID == "CM3W" ~ 23/12,
-        ID == "CM4W" ~ (9.3/2.54)/12
+        ID == "CM4W" ~ (9.3/2.54)/12,
+        ID == "Childs_T2" ~ 1.5,
+        ID == "Childs_T3" ~ 1
       )) %>%
       # check to make sure that negative depths are resolved to depth of 0
       dplyr::mutate(water.level.above.sensor = dplyr::case_when(
@@ -304,7 +347,7 @@ clean_hobo_u20 <- function(path){
       dplyr::select(-temp.ref_F, -baro.pressure_psi, -well_length_ft, -well_riser_ft, -total.pressure_psi)
     
     return(data)
-
+    
   }
   
   ## files corrected using R script
@@ -329,9 +372,11 @@ clean_hobo_u20 <- function(path){
         ID == "CM1W" ~ 66/12,
         ID == "CM2W" ~ 75.5/12,
         ID == "CM3W" ~ 75.5/12,
-        ID == "CM4W" ~ 10
+        ID == "CM4W" ~ 10,
+        ID == "Childs_T2" ~ 3.937,
+        ID == "Childs_T3" ~ 3.609
       )) %>% 
-      # riser lengths were converted from cm to ft when necessary
+      # riser lengths were converted from cm to ft where necessary
       dplyr::mutate(well_riser_ft = dplyr::case_when(
         ID == "RCW1" ~ (15/2.54)/12,
         ID == "RCW2" ~ (9/2.54)/12,
@@ -347,7 +392,9 @@ clean_hobo_u20 <- function(path){
         ID == "CM1W" ~ 8.5/12,
         ID == "CM2W" ~ 23.5/12,
         ID == "CM3W" ~ 23/12,
-        ID == "CM4W" ~ (9.3/2.54)/12
+        ID == "CM4W" ~ (9.3/2.54)/12,
+        ID == "Childs_T2" ~ 1.5,
+        ID == "Childs_T3" ~ 1
       )) %>% 
       # check to make sure that negative depths are resolved to depth of 0
       dplyr::mutate(water.level.above.sensor = dplyr::case_when(
@@ -360,9 +407,9 @@ clean_hobo_u20 <- function(path){
       dplyr::select(-temp.ref_F, -baro.pressure_psi, -well_length_ft, -well_riser_ft, -total.pressure_psi)
     
     return(data)
-      
+    
   }
-
+  
 }
 
 ```
@@ -476,7 +523,7 @@ process_well_data <- function(path, site, prev_compile = NULL, written_file_name
     compiled_pivoted <- compiled_pivoted %>% 
       do(data.frame(with(data = .,.[order(Date),]))) %>%
       dplyr::distinct() %>%
-      purrr::discard(~all(is.na(.)))%>% 
+      purrr::discard(~all(is.na(.))) %>% 
       dplyr::mutate(Date = as.character(Date))
     
     # Write out compiled file from provided files only 
@@ -564,6 +611,8 @@ temp_agg_meadow_dat <- function(data, start_day_of_week, interval = "30 min", av
                                         ymd("2020-09-30", tz = "UTC")) ~ 2020,
       date %within% lubridate::interval(ymd("2020-10-01", tz = "UTC"), 
                                         ymd("2021-09-30", tz = "UTC")) ~ 2021,
+      date %within% lubridate::interval(ymd("2021-10-01", tz = "UTC"), 
+                                        ymd("2022-09-30", tz = "UTC")) ~ 2022
     )) 
   # %>% 
   #   mutate(date = as.character(date)) %>% 

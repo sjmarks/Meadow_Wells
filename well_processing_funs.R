@@ -280,8 +280,8 @@ clean_hobo_u20 <- function(path){
         ID == "CM2W" ~ 75.5/12,
         ID == "CM3W" ~ 75.5/12,
         ID == "CM4W" ~ 10,
-        ID == "ChildsT2W" ~ 3.937,
-        ID == "ChildsT3W" ~ 3.609
+        ID == "Childs_T2" ~ 3.937,
+        ID == "Childs_T3" ~ 3.609
       )) %>% 
       # riser lengths were converted from cm to ft where necessary
       dplyr::mutate(well_riser_ft = dplyr::case_when(
@@ -300,8 +300,8 @@ clean_hobo_u20 <- function(path){
         ID == "CM2W" ~ 23.5/12,
         ID == "CM3W" ~ 23/12,
         ID == "CM4W" ~ (9.3/2.54)/12,
-        ID == "ChildsT2W" ~ 1.5,
-        ID == "ChildsT3W" ~ 1
+        ID == "Childs_T2" ~ 1.5,
+        ID == "Childs_T3" ~ 1
       )) %>%
       # check to make sure that negative depths are resolved to depth of 0
       dplyr::mutate(water.level.above.sensor = dplyr::case_when(
@@ -339,8 +339,8 @@ clean_hobo_u20 <- function(path){
         ID == "CM2W" ~ 75.5/12,
         ID == "CM3W" ~ 75.5/12,
         ID == "CM4W" ~ 10,
-        ID == "ChildsT2W" ~ 3.937,
-        ID == "ChildsT3W" ~ 3.609
+        ID == "Childs_T2" ~ 3.937,
+        ID == "Childs_T3" ~ 3.609
       )) %>% 
       # riser lengths were converted from cm to ft where necessary
       dplyr::mutate(well_riser_ft = dplyr::case_when(
@@ -359,8 +359,8 @@ clean_hobo_u20 <- function(path){
         ID == "CM2W" ~ 23.5/12,
         ID == "CM3W" ~ 23/12,
         ID == "CM4W" ~ (9.3/2.54)/12,
-        ID == "ChildsT2W" ~ 1.5,
-        ID == "ChildsT3W" ~ 1
+        ID == "Childs_T2" ~ 1.5,
+        ID == "Childs_T3" ~ 1
       )) %>% 
       # check to make sure that negative depths are resolved to depth of 0
       dplyr::mutate(water.level.above.sensor = dplyr::case_when(
