@@ -12,12 +12,18 @@ The **functions** contained in this repo:
 
 All functions are contained in the file `Well_Processing_revised.Rmd`. This document describes each function's purpose and usage in greater detail. Functions are also contained in `well_processing_funs.R` so they can be loaded into the global environment using a call to `source("well_processing_funs.R")`. The well data processing procedure is performed in the `.Rmd` files with file names indicating the month and year well data were collected in the field from research meadows. Raw data files are contained in sub-folders to this repo with nomenclature indicative of where and when files were collected in the field. Barometric correction of well data is performed in these folders, as well as weekly averaging. The functions are also able to compile files with baro correction done in HOBOware software. The weekly averaging process is only as recent as the Nov 2020 sub-folders.
 
-**NOTE: Most recent compilation was done for data files collected in May 2021- `Well_Processing_May2021.Rmd` . . . Previous compilations in this repo (July 2020, Aug 2020, Nov 2020) do not feature the most up to date functions in their respective `.Rmd` files. Please reference `Well_Processing_revised.Rmd` or `Well_Processing_May2021.Rmd` for the next compilation process.**
+**NOTE: Most recent compilation was done for data files collected in July 2021- `Well_Processing_July2021.Rmd` . . . Some compilations in this repo (July 2020, Aug 2020, Nov 2020) do not feature the most up to date functions in their respective `.Rmd` files due to improvements. Please reference `Well_Processing_revised.Rmd` or `Well_Processing_July2021.Rmd` for the next compilation process.**
+
+**# TO DO (as of 7/21/2021)**
+
+1. RCM 30-minute well compilations from July 2021 trip (Simon did Marian, Control, and Childs for July 2021 b/c needed for summer research tasks)
+2. Update weekly averaging for latest Marian and Control compilations- needed for summer reserach work for these meadows
+3. RCM and Childs weekly compilations. Leaving this up to Joe. Feel free to discard the weekly compilation that Simon completed for RCM back in Nov 2020 if needed (e.g choose different start date for averaging) to meet Joe's research needs and desires, Childs does not have an existing weekly compilation file FYI)
 
 
 #### **Well dimensions and site IDs used in compilations:**
 
-This info is reflected in the functions for calculating depth to groundwater, but is also included here for reference/completeness.
+This info is reflected in the functions for calculating depth to groundwater, but is also included here for reference/completeness. Note site ID indicates the well name exactly how it should look on line 1 of barometric corrected files `.csv` to be compiled correctly.
 
 | Site ID | Well Length | Riser   |
 |---------|-------------|---------|
@@ -69,21 +75,27 @@ This info is reflected in the functions for calculating depth to groundwater, bu
 |----------------|-----------------|-----------------|-------------------------------------------------|
 | MM2W July 2020 | 12/10/2019 9:30 | 7/7/2020 8:30   | CM July 2020                                    |
 | MM2W May 2021  | 7/7/2020 9:00   | 3/5/2021 23:30  | CM Aug 2020; RC Aug 2020; CM May 2021           |
+| MM2W July 2021 | 5/1/2021 17:00  | 7/5/2021 18:00  | CM July 2021                                    |
 | MM3W July 2020 | 4/25/2020 16:00 | 7/7/2020 9:30   | CM July 2020                                    |
 | MM3W Aug 2020  | 7/7/2020 10:30  | 8/17/2020 9:00  | RC Aug 2020; Control July 2020                  |
 | MM3W Nov 2020  | 8/17/2020 9:30  | 11/23/2020 9:30 | Control Nov 2020                                |
 | MM3W May 2021  | 11/23/2020 10:00| 5/1/2021 16:00  | Control May 2021                                |
+| MM3W July 2021 | 5/1/2021 16:30  | 7/5/2021 18:00  | CM July 2021                                    |
 | MM4W July 2020 | 4/25/2020 8:30  | 7/7/2020 10:00  | CM July 2020                                    |
 | MM4W May 2021  | 7/7/2020 10:30  | 5/1/2021 16:00  | CM Aug 2020; RC Aug 2020; CM May 2021           |
+| MM4W July 2021 | 5/1/2021 16:30  | 7/5/2021 18:00  | CM July 2021                                    |
 | MM5W July 2020 | 4/25/2020 15:00 | 7/7/2020 11:00  | CM July 2020                                    |
 | MM5W Nov 2020  | 7/7/2020 11:30  | 11/23/2020 8:30 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | MM5W May 2021  | 11/23/2020 9:00 | 5/1/2021 16:00  | Control May 2021                                |
+| MM5W July 2021 | 5/1/2021 16:30  | 7/5/2021 18:30  | CM July 2021                                    |
 | MM7W July 2020 | 4/25/2019 11:00 | 7/7/2020 10:30  | CM July 2020                                    |
 | MM7W Aug 2020  | 7/7/2020 11:00  | 8/17/2020 9:00  | RC Aug 2020; Control July 2020                  |
 | MM7W Nov 2020  | 8/17/2020 9:30  | 11/23/2020 8:30 | Control Nov 2020                                |
 | MM7W May 2021  | 11/23/2020 9:00 | 5/1/2021 16:00  | Control May 2021                                |
+| MM7W July 2021 | 5/1/2021 16:30  | 7/5/2021 19:00  | CM July 2021                                    |
 | MM6W Nov 2020  | 7/7/2020 10:30  | 11/23/2020 9:30 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | MM6W May 2021  | 11/23/2020 10:00| 5/1/2021 16:00  | Control May 2021                                |
+| MM6W July 2021 | 5/1/2021 16:30  | 7/5/2021 18:30  | CM July 2021                                    |
 
 ##### **Control**
 
@@ -95,32 +107,39 @@ This info is reflected in the functions for calculating depth to groundwater, bu
 | CM0W Aug 2020   | 7/7/2020 17:00  | 8/17/2020 9:00   | RC Aug 2020; Control July 2020                  |
 | CM0W Nov 2020   | 8/18/2020 9:30  | 11/23/2020 10:00 | Control Nov 2020                                |
 | CM0W May 2021   | 11/23/2020 10:30| 5/01/2021 17:00  | Control May 2021                                |
+| CM0W July 2021  | 5/1/2021 17:30  | 7/6/2021 7:30    | CM July 2021                                    |
 | CM1W July 2020  | 12/8/2019 16:30 | 7/7/2020 15:30   | CM July 2020                                    |
 | CM1W Aug 2020   | 7/7/2020 16:00  | 8/17/2020 9:00   | RC Aug 2020; Control July 2020                  |
 | CM1W Nov 2020   | 8/18/2020 9:30  | 11/23/2020 9:00  | Control Nov 2020                                |
 | CM1W May 2021   | 11/23/2020 09:30| 5/01/2021 16:30  | Control May 2021                                |
+| CM1W July 2021  | 5/1/2021 17:00  | 7/6/2021 6:30    | CM July 2021                                    |
 | CM3W July 2020  | 12/8/2019 17:00 | 7/7/2020 15:00   | CM July 2020                                    |
 | CM3W Nov 2020   | 7/7/2020 16:30  | 11/23/2020 10:30 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | CM3W May 2021   | 11/23/2020 11:00| 5/01/2021 16:30  | Control May 2021                                |
+| CM3W July 2021  | 5/1/2021 17:00  | 7/6/2021 8:30    | CM July 2021                                    |
 | CM4W July 2020  | 4/26/2020 11:30 | 7/7/2020 16:30   | CM July 2020                                    |
 | CM4W Nov 2020   | 7/7/2020 17:00  | 11/23/2020 10:30 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | CM4W May 2021   | 11/23/2020 11:00| 5/01/2021 16:30  | Control May 2021                                |
+| CM4W July 2021  | 5/1/2021 17:00  | 7/6/2021 7:30    | CM July 2021                                    |
 | CM2W Nov 2020   | 7/7/2020 17:00  | 11/23/2020 10:30 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | CM2W May 2021   | 11/23/2020 11:00| 5/01/2021 16:30  | Control May 2021                                |
+| CM2W July 2021  | 5/1/2021 17:00  | 7/6/2021 8:00    | CM July 2021                                    |
 
 ##### **Childs**
 
-| File               | Start          | End              | Baro file(s) used                                  |
+| File               | Start          | End              | Baro file(s) used                               |
 |--------------------|----------------|------------------|-------------------------------------------------|
 | ChildsT2 July 2020 | 9/5/2019 13:00 | 7/6/2020 10:00   | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | ChildsT2 Nov 2020  | 7/7/2020 13:30 | 11/23/2020 10:00 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | ChildsT2 May 2021  | 11/23/2019 10:30 | 5/1/2021 16:00 | Control May 2021                                |
+| ChildsT2 July 2021 | 5/1/2021 16:30 | 7/6/2021 9:00    | Control July 2021                               |
 | ChildsT3 Nov 2020  | 9/5/2019 13:30 | 11/23/2020 10:00 | RC Aug 2020; Control Aug 2020; Control Nov 2020 |
 | ChildsT3 May 2021  | 11/23/2019 11:00 | 5/1/2021 16:00 | Control May 2021                                | 
+| ChildsT3 July 2021 | 5/1/2021 16:30 | 7/6/2021 8:00    | Control July 2021                               |
 
 #### **Weekly compilation log:**
 
-##### **RCM**
+##### **RCM (SUBJECT TO CHANGE IF JOE WANTS TO)**
 
 | Start Week Of | End Week Of   | Weekday start      |
 |---------------|---------------|--------------------|
