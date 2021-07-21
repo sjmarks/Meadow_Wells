@@ -10,15 +10,14 @@ The **functions** contained in this repo:
 4. Update a previous compilation for a given meadow site with newly collected raw data files from the field.
 5. Compiles weekly averages of well data (or any time aggregation and/or several other summary statistics).
 
-All functions are contained in the file `Well_Processing_revised.Rmd`. This document describes each function's purpose and usage in greater detail. Functions are also contained in `well_processing_funs.R` so they can be loaded into the global environment using a call to `source("well_processing_funs.R")`. The well data processing procedure is performed in the `.Rmd` files with file names indicating the month and year well data were collected in the field from research meadows. Raw data files are contained in sub-folders to this repo with nomenclature indicative of where and when files were collected in the field. Barometric correction of well data is performed in these folders, as well as weekly averaging. The functions are also able to compile files with baro correction done in HOBOware software. The weekly averaging process is only as recent as the Nov 2020 sub-folders.
+All functions are contained in the file `Well_Processing_revised.Rmd`. This document describes each function's purpose and usage in greater detail. Functions are also contained in `well_processing_funs.R` so they can be loaded into the global environment using a call to `source("well_processing_funs.R")`. The well data processing procedure is performed in the `.Rmd` files with file names indicating the month and year well data were collected in the field from research meadows. Raw data files are contained in sub-folders to this repo with nomenclature indicative of where and when files were collected in the field. Barometric correction of well data is performed in these folders, as well as weekly averaging. The functions are also able to compile files with baro correction done in HOBOware software. The weekly averaging process is only as recent as the NJuly 2021 sub-folders (CONTROL AND MARIAN ONLY).
 
 **NOTE: Most recent compilation was done for data files collected in July 2021- `Well_Processing_July2021.Rmd` . . . Some compilations in this repo (July 2020, Aug 2020, Nov 2020) do not feature the most up to date functions in their respective `.Rmd` files due to improvements. Please reference `Well_Processing_revised.Rmd` or `Well_Processing_July2021.Rmd` for the next compilation process.**
 
 **# TO DO (as of 7/21/2021)**
 
 1. RCM 30-minute well compilations from July 2021 trip (Simon did Marian, Control, and Childs for July 2021 b/c needed for summer research tasks)
-2. Update weekly averaging for latest Marian and Control compilations- needed for summer reserach work for these meadows
-3. RCM and Childs weekly compilations. Leaving this up to Joe. Feel free to discard the weekly compilation that Simon completed for RCM back in Nov 2020 if needed (e.g choose different start date for averaging) to meet Joe's research needs and desires, Childs does not have an existing weekly compilation file FYI)
+2. RCM and Childs weekly compilations. Leaving this up to Joe. Feel free to discard the weekly compilation that Simon completed for RCM back in Nov 2020 if needed (e.g choose different start date for averaging) to meet Joe's research needs and desires, Childs does not have an existing weekly compilation file FYI)
 
 
 #### **Well dimensions and site IDs used in compilations:**
@@ -149,10 +148,10 @@ This info is reflected in the functions for calculating depth to groundwater, bu
 
 | Start Week Of  | End Week Of   | Weekday start      |
 |----------------|---------------|--------------------|
-| 4/26/2019      | 11/13/2020    | Friday (6)         |
+| 4/26/2019      | 6/25/2021    | Friday (6)          |
 
 ##### **Control**
 
 | Start Week Of  | End Week Of   | Weekday start      |
 |----------------|---------------|--------------------|
-| 4/26/2019      | 11/13/2020    | Friday (6)         |
+| 4/26/2019      | 6/25/2021    | Friday (6)          |
