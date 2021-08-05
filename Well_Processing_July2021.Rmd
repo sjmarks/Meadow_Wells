@@ -19,19 +19,19 @@ source("well_processing_funs.R")
 
 ```{r}
 
-## Prev RC Compile (Nov 2020)
+## Prev RC Compile (May 2021)
 
-# RC_compile_Nov2020 <- readr::read_csv(file = "RC_Wells_Nov2020/raw/compiledwells_RC_Nov2020.csv", 
-#                                        col_types = cols(Date = col_character(), .default = col_double())) %>% 
-#   dplyr::mutate(Date = lubridate::ymd_hms(Date))
+RC_compile_May2021 <- readr::read_csv(file = "RC_Wells_May2021/raw/compiledwells_RC_May2021.csv", 
+                                        col_types = cols(Date = col_character(), .default = col_double())) %>% 
+dplyr::mutate(Date = lubridate::ymd_hms(Date))
 
 ```
 
 ```{r}
 
-# update the November RC well compilation 
+# update the May 2021 RC well compilation 
 
-# RC_compile_May2021 <- process_well_data("RC_Wells_May2021/raw", site = "RC", prev_compile = RC_compile_Nov2020, written_file_name = "compiledwells_RC_May2021.csv")
+RC_compile_July2021 <- process_well_data("RC_Wells_July2021/raw", site = "RC", prev_compile = RC_compile_May2021, written_file_name = "compiledwells_RC_July2021.csv")
 
 ```
 
