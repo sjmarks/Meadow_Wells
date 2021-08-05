@@ -14,10 +14,9 @@ All functions are contained in the file `Well_Processing_revised.Rmd`. This docu
 
 **NOTE: Most recent compilation was done for data files collected in July 2021- `Well_Processing_July2021.Rmd` . . . Some compilations in this repo (July 2020, Aug 2020, Nov 2020) do not feature the most up to date functions in their respective `.Rmd` files due to improvements. Please reference `Well_Processing_revised.Rmd` or `Well_Processing_July2021.Rmd` for the next compilation process.**
 
-**# TO DO (as of 7/21/2021)**
+**# TO DO (as of 8/5/2021)**
 
-1. RCM 30-minute well compilations from July 2021 trip (Simon did Marian, Control, and Childs for July 2021 b/c needed for summer research tasks)
-2. RCM and Childs weekly compilations. Leaving this up to Joe. Feel free to discard the weekly compilation that Simon completed for RCM back in Nov 2020 if needed (e.g choose different start date for averaging) to meet Joe's research needs and desires, Childs does not have an existing weekly compilation file FYI)
+1. RCM and Childs weekly compilations. Leaving this up to Joe. Feel free to discard the weekly compilation that Simon completed for RCM back in Nov 2020 if needed (e.g choose different start date for averaging) to meet Joe's research needs and desires, Childs does not have an existing weekly compilation file FYI)
 
 
 #### **Well dimensions and site IDs used in compilations:**
@@ -55,18 +54,22 @@ This info is reflected in the functions for calculating depth to groundwater, bu
 | RCW6 July 2020 | 4/25/2020 12:30 | 7/6/2020 7:30    | RC July 2020                                |
 | RCW6 Aug 2020  | 7/6/2020 8:00   | 8/17/2020 9:00   | RC Aug 2020; Control July 2020              |
 | RCW6 Nov 2020  | 8/17/2020 10:00 | 11/21/2020 13:30 | RC Nov 2020                                 |
-| RCW6 May 2021  | 11/21/2020 14:00| 5/01/2021 11:00  | RC Nov 2020                                 |
+| RCW6 May 2021  | 11/21/2020 14:00| 5/01/2021 11:00  | RC May 2021                                 |
+| RCW6 July 2021 | 05/01/2021 11:30| 7/06/2021 12:00  | RC July 2021                                |
 | RCW1 July 2020 | 12/9/2019 12:00 | 7/6/2020 7:30    | RC July 2020                                |
 | RCW1 Aug 2020  | 7/8/2020 18:00  | 8/17/2020 9:00   | RC Aug 2020; Control July 2020              |
 | RCW1 Nov 2020  | 8/17/2020 10:00 | 11/21/2020 13:30 | RC Nov 2020                                 |
 | RCW1 May 2021  | 11/21/2020 14:00| 5/01/2021 11:00  | RC May 2021                                 |
+| RCW1 July 2021 | 05/01/2021 11:30| 7/06/2021 10:30  | RC July 2021                                |
 | RCW2 Apr 2020  | 9/3/2019 11:00  | 4/25/2020 10:30  | RC Apr 2020                                 |
 | RCW2 July 2020 | 4/25/2020 11:30 | 7/6/2020 7:30    | RC July 2020                                |
 | RCW2 Nov 2020  | 7/6/2020 8:00   | 11/21/2020 13:30 | RC Aug 2020; Control July 2020; RC Nov 2020 |
 | RCW2 May 2021  | 11/21/2020 14:00| 05/01/2021 09:30 | RC May 2021                                 |
+| RCW1 July 2021 | 05/01/2021 10:00| 7/06/2021 11:00  | RC July 2021                                |
 | RCW3 Aug 2020  | 7/9/2020 21:00  | 8/17/2020 9:00   | RC Aug 2020; Control July 2020              |
 | RCW3 Nov 2020  | 8/17/2020 10:00 | 11/21/2020 13:30 | RC Nov 2020                                 |
 | RCW3 May 2021  |11/21/2020 14:00 | 05/01/2021 08:30 | RC May 2021                                 |
+| RCW3 July 2021 | 05/01/2021 9:00 | 7/06/2021 11:00  | RC July 2021                                |
 
 ##### **Marian**
 

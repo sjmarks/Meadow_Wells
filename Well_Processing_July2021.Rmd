@@ -15,7 +15,7 @@ source("well_processing_funs.R")
 
 ```
  
-## Update RC Compilation (STILL NEED TO DO, ONLY DID CM, MM, and CM on 07-21-2021)
+## Update RC Compilation
 
 ```{r}
 
@@ -24,6 +24,8 @@ source("well_processing_funs.R")
 RC_compile_May2021 <- readr::read_csv(file = "RC_Wells_May2021/raw/compiledwells_RC_May2021.csv", 
                                         col_types = cols(Date = col_character(), .default = col_double())) %>% 
 dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+clean_hobo_u20(path = "RC_Wells_July2021/raw/RCW2_fixed_dates_July2021_hobocorrected.csv")
 
 ```
 
