@@ -1,0 +1,138 @@
+---
+title: "RCM_Wells_weekly_avgs_Dec2021"
+author: "Joe Murphy"
+date: "02/04/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(data.table)
+library(openair)
+```
+
+## Latest RCM Well Compilation Data (December 2021)
+
+```{r}
+
+RC_Wells_Dec2021 <- readr::read_csv("raw/compiledwells_RC_Dec2021.csv", 
+                                    col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
+
+```
+
+## Data Q/C
+
+* Compilation (previosuly done) procedure removes bad data (e.g. negative pressure values)
+* This Q/C corrects:
+
+1. The slight error associated with Dwyer well-setups (vented pressure transducers), where depth to groundwater resolved to a negative value when water table was in fact at the ground surface. Error is associated with PSI to water depth conversion for these wells.
+2. Noise when wells are in fact dry. Typical error of U20 is 0.015 ft. Adjusts `water.level.above.sensor` vars and resolves `depth.gw` to the value of `well_length_ft - well_riser_ft` accordingly
+
+```{r}
+
+RC_Wells_good_data_Dec2021 <- RC_Wells_Dec2021 %>%
+  dplyr::mutate(dplyr::across(starts_with("depth"), ~ case_when(
+    . < 0 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  dplyr::mutate(dplyr::across(starts_with("water"), ~ case_when(
+    . <= 0.03 ~ 0,
+    TRUE ~ .
+  ))) %>% 
+  # update depth to gw, resolving to well length when water level above sensor is 0
+  dplyr::mutate(depth.gw_ft_RCW1 = case_when(
+    water.level.above.sensor_RCW1 == 0 ~ 9.508,
+    TRUE ~ depth.gw_ft_RCW1
+  ), depth.gw_ft_RCW2 = case_when(
+    water.level.above.sensor_RCW2 == 0 ~ 4.626,
+    TRUE ~ depth.gw_ft_RCW2
+  ), depth.gw_ft_RCW3 = case_when(
+    water.level.above.sensor_RCW3 == 0 ~ 8.622,
+    TRUE ~ depth.gw_ft_RCW3
+  ), depth.gw_ft_RCW6 = case_when(
+    water.level.above.sensor_RCW6 == 0 ~ 9.508,
+    TRUE ~ depth.gw_ft_RCW6
+  ))
+  
+```
+
+## Temporal Averaging Function
+
+```{r}
+
+temp_agg_meadow_dat <- function(data, start_day_of_week, interval = "30 min", avg.time = "7 day", data.thresh = 50, statistic = "mean"){
+  
+  # data <- readr::read_csv(path, col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  #   dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
+  
+  # path_write_out <- paste0(stringr::str_replace(path, "[^/]+$", replacement = ""), file_name_write)
+  
+  # Determine the dates corresponding to the first and last of chosen weekday (start date for averaging) present in data
+  start_date <- data %>% 
+    dplyr::mutate(is.chosen_wday = ifelse(lubridate::wday(Date) == start_day_of_week, T, F)) %>%
+    dplyr::filter(is.chosen_wday == TRUE) %>% 
+    dplyr::summarise(min(Date)) %>% 
+    dplyr::pull()
+  
+  end_date <- data %>% 
+    dplyr::mutate(is.chosen_wday = ifelse(lubridate::wday(Date) == start_day_of_week - 1, T, F)) %>%
+    dplyr::filter(is.chosen_wday == TRUE) %>% 
+    dplyr::summarise(max(Date)) %>% 
+    dplyr::pull()
+  
+  data <- data %>% 
+    # rename Date variable to "date" to play nicely w/ openair::timeAverage
+    dplyr::rename(date = Date) %>% 
+    dplyr::filter(date >= start_date & date <= end_date)
+  
+  aggregation <- openair::timeAverage(data, avg.time = avg.time, 
+                                      data.thresh = data.thresh, statistic = statistic,
+                                      start.date = start_date, end.date = end_date, interval = interval) %>% 
+    # determine water year membership of the time avg- this might need to be tweaked
+    dplyr::mutate(WY = dplyr::case_when(
+      date %within% lubridate::interval(ymd("2017-10-01", tz = "UTC"), 
+                                        ymd("2018-09-30", tz = "UTC")) ~ 2018,
+      date %within% lubridate::interval(ymd("2018-10-01", tz = "UTC"), 
+                                        ymd("2019-09-30", tz = "UTC")) ~ 2019,
+      date %within% lubridate::interval(ymd("2019-10-01", tz = "UTC"), 
+                                        ymd("2020-09-30", tz = "UTC")) ~ 2020,
+      date %within% lubridate::interval(ymd("2020-10-01", tz = "UTC"), 
+                                        ymd("2021-09-30", tz = "UTC")) ~ 2021,
+    )) 
+  # %>% 
+  #   mutate(date = as.character(date)) %>% 
+  #   rename(Date = date) %>%  
+  #   # Write to .csv
+  #   readr::write_csv(path = path_write_out)
+  
+}
+
+```
+
+## Weekly Averages for RCM Well data
+
+* First instruments at RCM were well installed on Saturday 10-06-2018, so `start_day_of_week = 7`
+* Maintains all other default arguments from above functions
+
+**First week is week of 2019-06-01, last week is week of 2020-11-14**
+
+```{r}
+
+weekly_RC_Wells_toDec2021 <- temp_agg_meadow_dat(RC_Wells_good_data_Dec2021, interval = "30 min", start_day_of_week = 7) %>% 
+  mutate(date = as.character(date)) %>%
+  rename(Date = date) %>%
+  dplyr::mutate(dplyr::across(starts_with("depth") | starts_with("water"), ~ round(., digits = 3)))
+
+# write out to CSV
+
+weekly_RC_Wells_toDec2021 %>% 
+  readr::write_csv(path = "weekly_Wells_RC_Dec2021.csv")
+
+
+```
