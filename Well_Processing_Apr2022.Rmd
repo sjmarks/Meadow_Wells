@@ -1,0 +1,95 @@
+---
+title: "Well_Processing_Apr2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Functions for processing
+
+```{r}
+
+source("well_processing_funs.R")
+
+```
+ 
+## Update RC Compilation (DONE)
+
+```{r}
+
+## Prev RC Compile (December 2021)
+
+RC_compile_Dec2021 <- readr::read_csv(file = "RC_Wells_Dec2021/raw/compiledwells_RC_Dec2021.csv", 
+                                        col_types = cols(Date = col_character(), .default = col_double())) %>% 
+dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+#clean_hobo_u20(path = "RC_Wells_July2021/raw/RCW2_fixed_dates_July2021_hobocorrected.csv")
+
+```
+
+```{r}
+
+# update the December 2021 RC well compilation 
+
+RC_compile_Apr2022 <- process_well_data("RC_Wells_Apr2022/raw", site = "RC", prev_compile = RC_compile_Dec2021, written_file_name = "compiledwells_RC_Apr2022.csv")
+
+```
+
+## Update Control Compilation (DONE)
+
+```{r}
+
+## Prev Control Compile (December 2021)
+
+Control_compile_Dec2021 <- readr::read_csv(file = "Control_Wells_Dec2021/raw/compiledwells_Control_Dec2021.csv", 
+                                       col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+```
+
+```{r}
+
+# update the December 2021 Control well compilation 
+
+Control_compile_Apr2022 <- process_well_data("Control_Wells_Apr2022/raw", site = "control", prev_compile = Control_compile_Dec2021, written_file_name = "compiledwells_Control_Apr2022.csv")
+
+```
+
+## Update Marian Compilation (DONE)
+
+```{r}
+
+## Prev Marian Compile (December 2021)
+
+Marian_compile_Dec2021 <- readr::read_csv(file = "Marian_Wells_Dec2021/raw/compiledwells_Marian_Dec2021.csv", 
+                                       col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+```
+
+```{r}
+
+Marian_compile_Apr2022 <- process_well_data("Marian_Wells_Apr2022/raw", site = "Marian", prev_compile = Marian_compile_Dec2021, written_file_name = "compiledwells_Marian_Apr2022.csv")
+
+```
+
+## Update Child's compilation (DONE)
+
+```{r}
+
+## Prev Childs Compile (May 2021)
+
+Childs_compile_May2021 <- readr::read_csv(file = "Childs_Wells_May2021/raw/compiledwells_Childs_May2021.csv", 
+                                       col_types = cols(Date = col_character(), .default = col_double())) %>% 
+  dplyr::mutate(Date = lubridate::ymd_hms(Date))
+
+```
+
+```{r}
+
+Childs_compile_July2021 <- process_well_data("Childs_Wells_July2021/raw", site = "Childs", prev_compile = Childs_compile_May2021, written_file_name = "compiledwells_Childs_July2021.csv")
+
+```
+
