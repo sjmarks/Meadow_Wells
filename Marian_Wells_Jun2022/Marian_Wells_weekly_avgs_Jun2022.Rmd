@@ -1,7 +1,7 @@
 ---
-title: "Marian_Wells_weekly_avgs_Apr2022"
-author: "Joe Murphy"
-date: "05/04/2022"
+title: "Marian_Wells_weekly_avgs_Jun2022"
+author: "Oriana Ramirez"
+date: "10/10/2022"
 output: html_document
 ---
 
@@ -16,11 +16,11 @@ library(data.table)
 library(openair)
 ```
 
-## Latest 30-minute Marian Well Compilation Data (April 2022)
+## Latest 30-minute Marian Well Compilation Data (June 2022)
 
 ```{r}
 
-Marian_Wells_Apr2022 <- readr::read_csv("raw/compiledwells_Marian_Apr2022.csv", 
+Marian_Wells_Jun2022 <- readr::read_csv("raw/compiledwells_Marian_Jun2022.csv", 
                                     col_types = cols(Date = col_character(), .default = col_double())) %>% 
   dplyr::mutate(Date = as.POSIXct(Date, tz = "UTC"))
 
@@ -36,7 +36,7 @@ Marian_Wells_Apr2022 <- readr::read_csv("raw/compiledwells_Marian_Apr2022.csv",
 
 ```{r}
 
-Marian_Wells_good_data_Apr2022 <- Marian_Wells_Apr2022 %>%
+Marian_Wells_good_data_Jun2022 <- Marian_Wells_Jun2022 %>%
   dplyr::mutate(dplyr::across(starts_with("depth"), ~ case_when(
     . < 0 ~ 0,
     TRUE ~ .
@@ -129,16 +129,16 @@ temp_agg_meadow_dat <- function(data, start_day_of_week, interval = "30 min", av
 
 ```{r}
 
-weekly_Marian_Wells_toApr2022 <- temp_agg_meadow_dat(Marian_Wells_good_data_Apr2022, interval = "30 min", start_day_of_week = 7) %>% 
+weekly_Marian_Wells_toJun2022 <- temp_agg_meadow_dat(Marian_Wells_good_data_Jun2022, interval = "30 min", start_day_of_week = 7) %>% 
   mutate(date = as.character(date)) %>%
   rename(Date = date) %>%
   dplyr::mutate(dplyr::across(starts_with("depth") | starts_with("water"), ~ round(., digits = 3)))
 
 # write out to CSV
 
-weekly_Marian_Wells_toApr2022 %>% 
+weekly_Marian_Wells_toJun2022 %>% 
   # Date variable is already recognized as a character variable
-  readr::write_csv(path = "weekly_Wells_Marian_Apr2022.csv")
+  readr::write_csv(path = "weekly_Wells_Marian_Jun2022.csv")
 
 
 ```
